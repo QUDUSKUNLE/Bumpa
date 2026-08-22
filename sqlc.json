@@ -8,6 +8,7 @@
       "go": {
         "package": "db",
         "out": "adapters/db",
+        "sql_package": "pgx/v5",
         "emit_json_tags": true,
         "emit_prepared_queries": false,
         "emit_interface": true,

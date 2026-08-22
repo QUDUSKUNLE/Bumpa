@@ -5,7 +5,7 @@ import (
 )
 
 type Purchase struct {
-	ID             string
+	ID             uuid.UUID
 	user           uuid.UUID
 	ExternalID     string
 	AmountKobo     float32
