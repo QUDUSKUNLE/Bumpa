@@ -1,4 +1,4 @@
-package domain
+package events
 
 type BadgeDefinition struct {
 	Code            string

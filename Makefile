@@ -23,44 +23,44 @@ generate:
 
 # --- Local Migrations ---
 migrate-up:
-	$(GOBIN)/migrate -path="db/migrations" -database "$(DATABASE_URL)" up
+	$(GOBIN)/migrate -path="adapters/db/migrations" -database "$(DATABASE_URL)" up
 
 migrate-down:
-	$(GOBIN)/migrate -path="db/migrations" -database "$(DATABASE_URL)" down
+	$(GOBIN)/migrate -path="adapters/db/migrations" -database "$(DATABASE_URL)" down
 
 migration-version:
-	$(GOBIN)/migrate -path="db/migrations" -database "$(DATABASE_URL)" version
+	$(GOBIN)/migrate -path="adapters/db/migrations" -database "$(DATABASE_URL)" version
 
 force-migrate:
 	@if [ -z "$(V)" ]; then \
 		echo "error: please specify version argument V"; \
 		exit 1; \
 	fi; \
-	$(GOBIN)/migrate -path="db/migrations" -database "$(DATABASE_URL)" force $(V)
+	$(GOBIN)/migrate -path="adapters/db/migrations" -database "$(DATABASE_URL)" force $(V)
 
 migrate-rollback:
 	@if [ -z "$(V)" ]; then \
 		echo "error: please specify version argument V"; \
 		exit 1; \
 	fi; \
-	$(GOBIN)/migrate -path="db/migrations" -database "$(DATABASE_URL)" goto $(V)
+	$(GOBIN)/migrate -path="adapters/db/migrations" -database "$(DATABASE_URL)" goto $(V)
 
 # --- Docker Migrations ---
 migrate-docker-up:
 	docker-compose -f docker-compose.migrate.yml up migrate
 
 migrate-docker-down:
-	docker-compose -f docker-compose.migrate.yml run --rm migrate ./bin/migrate -path=db/migrations -database "$(DATABASE_URL)" down $(V)
+	docker-compose -f docker-compose.migrate.yml run --rm migrate ./bin/migrate -path=adapters/db/migrations -database "$(DATABASE_URL)" down $(V)
 
 migrate-docker-force:
 	@if [ -z "$(V)" ]; then \
 		echo "error: please specify version argument V"; \
 		exit 1; \
 	fi; \
-	docker-compose -f docker-compose.migrate.yml run --rm migrate ./bin/migrate -path=db/migrations -database "$(DATABASE_URL)" force $(V)
+	docker-compose -f docker-compose.migrate.yml run --rm migrate ./bin/migrate -path=adapters/db/migrations -database "$(DATABASE_URL)" force $(V)
 
 migrate-docker-version:
-	docker-compose -f docker-compose.migrate.yml run --rm migrate ./bin/migrate -path=db/migrations -database "$(DATABASE_URL)" version
+	docker-compose -f docker-compose.migrate.yml run --rm migrate ./bin/migrate -path=adapters/db/migrations -database "$(DATABASE_URL)" version
 
 # --- Production (safe) ---
 migrate-prod-up:
@@ -68,14 +68,14 @@ migrate-prod-up:
 		echo "error: please set PROD_DATABASE_URL in .env"; \
 		exit 1; \
 	fi; \
-	$(GOBIN)/migrate -path="db/migrations" -database "$(PROD_DATABASE_URL)" up
+	$(GOBIN)/migrate -path="adapters/db/migrations" -database "$(PROD_DATABASE_URL)" up
 
 migrate-prod-version:
 	@if [ -z "$(PROD_DATABASE_URL)" ]; then \
 		echo "error: please set PROD_DATABASE_URL in .env"; \
 		exit 1; \
 	fi; \
-	$(GOBIN)/migrate -path="db/migrations" -database "$(PROD_DATABASE_URL)" version
+	$(GOBIN)/migrate -path="adapters/db/migrations" -database "$(PROD_DATABASE_URL)" version
 
 # --- Create new migration ---
 create-migration:
@@ -84,7 +84,7 @@ create-migration:
 		echo "example: make create-migration NAME=add_user_table"; \
 		exit 1; \
 	fi; \
-	$(GOBIN)/migrate create -ext sql -dir db/migrations -seq $(NAME)
+	$(GOBIN)/migrate create -ext sql -dir adapters/db/migrations -seq $(NAME)
 
 # --- Help ---
 migrate-help:
