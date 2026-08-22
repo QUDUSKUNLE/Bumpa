@@ -6,7 +6,7 @@
     "engine": "postgresql",
     "gen": {
       "go": {
-        "package": "adapters/db",
+        "package": "db",
         "out": "adapters/db",
         "emit_json_tags": true,
         "emit_prepared_queries": false,
