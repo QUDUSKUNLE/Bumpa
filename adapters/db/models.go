@@ -5,11 +5,7 @@
 package db
 
 import (
-	"database/sql"
-	"encoding/json"
-	"time"
-
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Achievement struct {
@@ -26,50 +22,50 @@ type Badge struct {
 }
 
 type OutboxEvent struct {
-	ID          uuid.UUID       `json:"id"`
-	EventType   string          `json:"event_type"`
-	AggregateID uuid.UUID       `json:"aggregate_id"`
-	Payload     json.RawMessage `json:"payload"`
-	PublishedAt sql.NullTime    `json:"published_at"`
-	CreatedAt   time.Time       `json:"created_at"`
+	ID          pgtype.UUID        `json:"id"`
+	EventType   string             `json:"event_type"`
+	AggregateID pgtype.UUID        `json:"aggregate_id"`
+	Payload     []byte             `json:"payload"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type Payment struct {
-	ID                uuid.UUID      `json:"id"`
-	UserID            uuid.UUID      `json:"user_id"`
-	BadgeCode         string         `json:"badge_code"`
-	AmountKobo        int64          `json:"amount_kobo"`
-	ProviderReference sql.NullString `json:"provider_reference"`
-	Status            string         `json:"status"`
-	CreatedAt         time.Time      `json:"created_at"`
+	ID                pgtype.UUID        `json:"id"`
+	UserID            pgtype.UUID        `json:"user_id"`
+	BadgeCode         string             `json:"badge_code"`
+	AmountKobo        int64              `json:"amount_kobo"`
+	ProviderReference pgtype.Text        `json:"provider_reference"`
+	Status            string             `json:"status"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
 
 type Purchase struct {
-	ID         uuid.UUID `json:"id"`
-	UserID     uuid.UUID `json:"user_id"`
-	ExternalID string    `json:"external_id"`
-	AmountKobo int64     `json:"amount_kobo"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID         pgtype.UUID        `json:"id"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	ExternalID string             `json:"external_id"`
+	AmountKobo int64              `json:"amount_kobo"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type User struct {
-	ID             uuid.UUID      `json:"id"`
-	Name           string         `json:"name"`
-	Email          string         `json:"email"`
-	Phone          sql.NullString `json:"phone"`
-	PaymentAccount sql.NullString `json:"payment_account"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
+	ID             pgtype.UUID        `json:"id"`
+	Name           string             `json:"name"`
+	Email          string             `json:"email"`
+	Phone          pgtype.Text        `json:"phone"`
+	PaymentAccount pgtype.Text        `json:"payment_account"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type UserAchievement struct {
-	UserID          uuid.UUID `json:"user_id"`
-	AchievementCode string    `json:"achievement_code"`
-	UnlockedAt      time.Time `json:"unlocked_at"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	AchievementCode string             `json:"achievement_code"`
+	UnlockedAt      pgtype.Timestamptz `json:"unlocked_at"`
 }
 
 type UserBadge struct {
-	UserID     uuid.UUID `json:"user_id"`
-	BadgeCode  string    `json:"badge_code"`
-	UnlockedAt time.Time `json:"unlocked_at"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	BadgeCode  string             `json:"badge_code"`
+	UnlockedAt pgtype.Timestamptz `json:"unlocked_at"`
 }

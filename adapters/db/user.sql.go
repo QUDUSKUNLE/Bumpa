@@ -7,10 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"time"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -26,23 +24,23 @@ RETURNING id, name, email, phone, payment_account, created_at
 `
 
 type CreateUserParams struct {
-	Name           string         `json:"name"`
-	Email          string         `json:"email"`
-	Phone          sql.NullString `json:"phone"`
-	PaymentAccount sql.NullString `json:"payment_account"`
+	Name           string      `json:"name"`
+	Email          string      `json:"email"`
+	Phone          pgtype.Text `json:"phone"`
+	PaymentAccount pgtype.Text `json:"payment_account"`
 }
 
 type CreateUserRow struct {
-	ID             uuid.UUID      `json:"id"`
-	Name           string         `json:"name"`
-	Email          string         `json:"email"`
-	Phone          sql.NullString `json:"phone"`
-	PaymentAccount sql.NullString `json:"payment_account"`
-	CreatedAt      time.Time      `json:"created_at"`
+	ID             pgtype.UUID        `json:"id"`
+	Name           string             `json:"name"`
+	Email          string             `json:"email"`
+	Phone          pgtype.Text        `json:"phone"`
+	PaymentAccount pgtype.Text        `json:"payment_account"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+	row := q.db.QueryRow(ctx, createUser,
 		arg.Name,
 		arg.Email,
 		arg.Phone,
@@ -68,16 +66,16 @@ LIMIT 1
 `
 
 type GetUserRow struct {
-	ID             uuid.UUID      `json:"id"`
-	Name           string         `json:"name"`
-	Email          string         `json:"email"`
-	Phone          sql.NullString `json:"phone"`
-	PaymentAccount sql.NullString `json:"payment_account"`
-	CreatedAt      time.Time      `json:"created_at"`
+	ID             pgtype.UUID        `json:"id"`
+	Name           string             `json:"name"`
+	Email          string             `json:"email"`
+	Phone          pgtype.Text        `json:"phone"`
+	PaymentAccount pgtype.Text        `json:"payment_account"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
-func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (GetUserRow, error) {
-	row := q.db.QueryRowContext(ctx, getUser, id)
+func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (GetUserRow, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
 	var i GetUserRow
 	err := row.Scan(
 		&i.ID,
@@ -98,16 +96,16 @@ LIMIT 1
 `
 
 type GetUserByEmailRow struct {
-	ID             uuid.UUID      `json:"id"`
-	Name           string         `json:"name"`
-	Email          string         `json:"email"`
-	Phone          sql.NullString `json:"phone"`
-	PaymentAccount sql.NullString `json:"payment_account"`
-	CreatedAt      time.Time      `json:"created_at"`
+	ID             pgtype.UUID        `json:"id"`
+	Name           string             `json:"name"`
+	Email          string             `json:"email"`
+	Phone          pgtype.Text        `json:"phone"`
+	PaymentAccount pgtype.Text        `json:"payment_account"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
@@ -127,16 +125,16 @@ ORDER BY created_at DESC
 `
 
 type ListUsersRow struct {
-	ID             uuid.UUID      `json:"id"`
-	Name           string         `json:"name"`
-	Email          string         `json:"email"`
-	Phone          sql.NullString `json:"phone"`
-	PaymentAccount sql.NullString `json:"payment_account"`
-	CreatedAt      time.Time      `json:"created_at"`
+	ID             pgtype.UUID        `json:"id"`
+	Name           string             `json:"name"`
+	Email          string             `json:"email"`
+	Phone          pgtype.Text        `json:"phone"`
+	PaymentAccount pgtype.Text        `json:"payment_account"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers)
+	rows, err := q.db.Query(ctx, listUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -156,9 +154,6 @@ func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -173,21 +168,21 @@ RETURNING id, name, email, phone, payment_account, created_at
 `
 
 type UpdateUserPaymentAccountParams struct {
-	ID             uuid.UUID      `json:"id"`
-	PaymentAccount sql.NullString `json:"payment_account"`
+	ID             pgtype.UUID `json:"id"`
+	PaymentAccount pgtype.Text `json:"payment_account"`
 }
 
 type UpdateUserPaymentAccountRow struct {
-	ID             uuid.UUID      `json:"id"`
-	Name           string         `json:"name"`
-	Email          string         `json:"email"`
-	Phone          sql.NullString `json:"phone"`
-	PaymentAccount sql.NullString `json:"payment_account"`
-	CreatedAt      time.Time      `json:"created_at"`
+	ID             pgtype.UUID        `json:"id"`
+	Name           string             `json:"name"`
+	Email          string             `json:"email"`
+	Phone          pgtype.Text        `json:"phone"`
+	PaymentAccount pgtype.Text        `json:"payment_account"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) UpdateUserPaymentAccount(ctx context.Context, arg UpdateUserPaymentAccountParams) (UpdateUserPaymentAccountRow, error) {
-	row := q.db.QueryRowContext(ctx, updateUserPaymentAccount, arg.ID, arg.PaymentAccount)
+	row := q.db.QueryRow(ctx, updateUserPaymentAccount, arg.ID, arg.PaymentAccount)
 	var i UpdateUserPaymentAccountRow
 	err := row.Scan(
 		&i.ID,

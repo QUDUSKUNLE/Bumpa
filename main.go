@@ -10,40 +10,54 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/QUDUSKUNLE/Bumpa/adapters/config"
+	"github.com/QUDUSKUNLE/Bumpa/adapters/db"
+	"github.com/QUDUSKUNLE/Bumpa/adapters/handlers"
+	"github.com/QUDUSKUNLE/Bumpa/adapters/routes"
+	"github.com/QUDUSKUNLE/Bumpa/adapters/repositories"
+	"github.com/QUDUSKUNLE/Bumpa/core/services"
+
 	"github.com/labstack/echo/v4"
 )
 
 func main() {
+
+	// Load configuration
+	cfg, err := config.LoadEnvironmentVariables()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	// Initialize database with custom configuration
+	dbConfig := config.DBConfig()
+
+	store, conn, err := db.DatabaseConnection(
+		context.Background(),
+		cfg.DATABASE_URL,
+		dbConfig,
+	)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repositories.NewRepository(store, conn)
+	service := services.NewServiceAdapter(repo)
+	httpHandler := handlers.NewHttpAdapter(*service)
+
 	e := echo.New()
 
-	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-	})
+	// Plug echo into PublicRoutesAdaptor
+	public := e.Group("")
 
-	// This route is the initial API boundary for the achievements feature.
-	// The domain and repository implementation can be attached without
-	// changing the server bootstrap.
-	e.GET("/users/:user/achievements", func(c echo.Context) error {
-		if c.Param("user") == "" {
-			return echo.NewHTTPError(http.StatusBadRequest, "user is required")
-		}
+	routes.PublicRoutesAdaptor(public, httpHandler)
 
-		return c.JSON(http.StatusOK, map[string]any{
-			"unlocked_achievements":          []string{},
-			"next_available_achievements":    []string{},
-			"current_badge":                  nil,
-			"next_badge":                     nil,
-			"remaining_to_unlock_next_badge": 0,
-		})
-	})
-
-	port := os.Getenv("HTTP_PORT")
-	if port == "" {
-		port = "8080"
+	if cfg.HTTP_PORT == "" {
+		cfg.HTTP_PORT = "8080"
 	}
 
 	go func() {
-		if err := e.Start(":" + port); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := e.Start(":" + cfg.HTTP_PORT); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("start server: %v", err)
 		}
 	}()
