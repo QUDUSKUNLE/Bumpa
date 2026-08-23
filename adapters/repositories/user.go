@@ -6,7 +6,6 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/adapters/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	// "github.com/jackc/pgx/v5"
 )
 
 func (r *Repository) CreateUser(ctx context.Context, user db.CreateUserParams) (db.User, error) {

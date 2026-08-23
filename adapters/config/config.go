@@ -35,9 +35,6 @@ type EnvConfiguration struct {
 	PAYSTACK_BASE_URL   string
 	PAYSTACK_SECRET_KEY string
 	PAYSTACK_PUBLIC_KEY string
-	// OPEN API
-	// MONGODB_URL
-	MONGODB_URL string
 	// Redis Cache
 	REDIS_URL string
 }
@@ -53,7 +50,6 @@ func LoadEnvironmentVariables() (*EnvConfiguration, error) {
 		PAYSTACK_PUBLIC_KEY: os.Getenv("PAYSTACK_PUBLIC_KEY"),
 		PAYSTACK_SECRET_KEY: os.Getenv("PAYSTACK_SECRET_KEY"),
 		REDIS_URL:           os.Getenv("REDIS_URL"),
-		MONGODB_URL:         os.Getenv("MONGODB_URL"),
 	}
 
 	// Validate required fields
