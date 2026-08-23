@@ -11,10 +11,17 @@ import (
 )
 
 type Querier interface {
-	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	CountPurchasesByUser(ctx context.Context, userID pgtype.UUID) (int32, error)
+	CountUserAchievement(ctx context.Context, userID pgtype.UUID) (int64, error)
+	CreateBusEvent(ctx context.Context, arg CreateBusEventParams) (OutboxEvent, error)
+	CreatePayment(ctx context.Context, arg CreatePaymentParams) (pgtype.UUID, error)
+	CreatePurchase(ctx context.Context, arg CreatePurchaseParams) (Purchase, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateUserBadge(ctx context.Context, arg CreateUserBadgeParams) (pgtype.UUID, error)
 	GetUser(ctx context.Context, id pgtype.UUID) (GetUserRow, error)
-	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
-	ListUsers(ctx context.Context) ([]ListUsersRow, error)
+	InsertUserAchievement(ctx context.Context, arg InsertUserAchievementParams) (pgtype.UUID, error)
+	MarkPaymentFailed(ctx context.Context, arg MarkPaymentFailedParams) error
+	MarkPaymentSuccessful(ctx context.Context, arg MarkPaymentSuccessfulParams) error
 	UpdateUserPaymentAccount(ctx context.Context, arg UpdateUserPaymentAccountParams) (UpdateUserPaymentAccountRow, error)
 }
 

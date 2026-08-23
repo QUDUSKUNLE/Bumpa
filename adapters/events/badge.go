@@ -9,5 +9,5 @@ type BadgeDefinition struct {
 type BadgeUnlockedPayload struct {
 	BadgeName string `json:"badge_name"`
 	BadgeCode string `json:"badge_code"`
-	User      User   `json:"user"`
+	User      string   `json:"user"`
 }

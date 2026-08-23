@@ -5,9 +5,9 @@ import (
 )
 
 type Purchase struct {
-	ID             uuid.UUID
-	user           uuid.UUID
-	ExternalID     string
-	AmountKobo     float32
-	PaymentAccount string //
+	ID             uuid.UUID `json:"id"`
+	User           uuid.UUID `json:"user"`
+	ExternalID     string    `json:"external_id"`
+	AmountKobo     float32   `json:"amount_kobo"`
+	PaymentAccount string    `json:"payment_account"`
 }

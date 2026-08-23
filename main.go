@@ -12,13 +12,35 @@ import (
 
 	"github.com/QUDUSKUNLE/Bumpa/adapters/config"
 	"github.com/QUDUSKUNLE/Bumpa/adapters/db"
+	"github.com/QUDUSKUNLE/Bumpa/adapters/events"
 	"github.com/QUDUSKUNLE/Bumpa/adapters/handlers"
-	"github.com/QUDUSKUNLE/Bumpa/adapters/routes"
+	"github.com/QUDUSKUNLE/Bumpa/adapters/payments"
 	"github.com/QUDUSKUNLE/Bumpa/adapters/repositories"
+	"github.com/QUDUSKUNLE/Bumpa/adapters/routes"
+	"github.com/QUDUSKUNLE/Bumpa/core/domain"
 	"github.com/QUDUSKUNLE/Bumpa/core/services"
+	"github.com/QUDUSKUNLE/Bumpa/core/services/badges"
+	"github.com/QUDUSKUNLE/Bumpa/core/services/cashback"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/labstack/echo/v4"
 )
+
+func seedUser(ctx context.Context, repo *repositories.Repository) error {
+	user := db.CreateUserParams{
+		Name:  "Jane Doe",
+		Email: "jane@example.com",
+		Phone: pgtype.Text{String: "+2348000000000", Valid: true},
+		PaymentAccount: pgtype.Text{
+			String: "acct_123456",
+			Valid:  true,
+		},
+	}
+
+	_, err := repo.CreateUser(ctx, user)
+	return err
+}
 
 func main() {
 
@@ -42,10 +64,40 @@ func main() {
 	defer conn.Close()
 
 	repo := repositories.NewRepository(store, conn)
+
+	if err := seedUser(context.Background(), repo); err != nil {
+		log.Printf("seed user: %v", err)
+	}
+
 	service := services.NewServiceAdapter(repo)
 	httpHandler := handlers.NewHttpAdapter(*service)
 
+	badgeService := badges.NewBadgeService(repo, badges.BadgeDefinition())
+
+	paymentProvider := &payments.PaymentHandler{
+		BaseURL:    "https://api.example.com",
+		APIKey:     "demo-key",
+		HTTPClient: &http.Client{Timeout: 10 * time.Second},
+	}
+	cashbackSvc := cashback.NewCashbackService(repo, paymentProvider)
+
+	bus := events.NewEventBus()
+
+	bus.Subscribe("BadgeUnlocked", func(ctx context.Context, evt domain.Event) error {
+		return badgeService.HandleAchievementUnlocked(ctx, events.Event{})
+	})
+
+	bus.Subscribe("BadgeUnlocked", func(ctx context.Context, evt domain.Event) error {
+		return cashbackSvc.HandleBadgeUnlocked(ctx, evt)
+	})
+
 	e := echo.New()
+
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},
+		AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAuthorization},
+	}))
 
 	// Plug echo into PublicRoutesAdaptor
 	public := e.Group("")

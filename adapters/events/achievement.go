@@ -14,5 +14,5 @@ type PurchaseStats struct {
 
 type AchievementUnlockedPayload struct {
 	AchievementName string `json:"achievement_name"`
-	User            User   `json:"user"`
+	User            string   `json:"user"`
 }

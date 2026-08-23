@@ -10,5 +10,6 @@ func PublicRoutesAdaptor(public *echo.Group, handler *handlers.HttpHandler) *ech
 	public.GET("/health", handler.Health)
 	public.GET("/users/:user_id/achievement", handler.GetAchievement)
 	public = public.Group("/v1")
+	public.POST("/purchases", handler.CreatePurchase)
 	return public
 }
