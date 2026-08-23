@@ -2,16 +2,23 @@ package services
 
 import (
 	"encoding/json"
+
 	"github.com/QUDUSKUNLE/Bumpa/core/ports"
+	"github.com/QUDUSKUNLE/Bumpa/core/services/achievements"
+	"github.com/QUDUSKUNLE/Bumpa/core/services/badges"
 )
 
 type ServicesHandler struct {
-	ports ports.RepositoryPorts
+	ports              ports.RepositoryPorts
+	AchievementService achievements.AchievementService
+	BadgeService       badges.BadgeService
 }
 
 func NewServiceAdapter(repositoryPort ports.RepositoryPorts) *ServicesHandler {
 	return &ServicesHandler{
-		ports: repositoryPort,
+		ports:              repositoryPort,
+		AchievementService: *achievements.NewAchievementService(repositoryPort, achievements.AchievementDefinition()),
+		BadgeService:       *badges.NewBadgeService(repositoryPort, badges.BadgeDefinition()),
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/adapters/events"
 	"github.com/QUDUSKUNLE/Bumpa/core/domain"
 	"github.com/QUDUSKUNLE/Bumpa/core/ports"
+	"github.com/QUDUSKUNLE/Bumpa/core/utils"
 	"github.com/google/uuid"
 )
 
@@ -17,12 +18,12 @@ type PaymentProvider interface {
 }
 
 type CashbackService struct {
-	repo       ports.Repository
+	repo       ports.RepositoryPorts
 	provider   PaymentProvider
 	amountKobo int64
 }
 
-func NewCashbackService(repo ports.Repository, provider PaymentProvider) *CashbackService {
+func NewCashbackService(repo ports.RepositoryPorts, provider PaymentProvider) *CashbackService {
 	return &CashbackService{
 		repo:       repo,
 		provider:   provider,
@@ -33,14 +34,16 @@ func NewCashbackService(repo ports.Repository, provider PaymentProvider) *Cashba
 func (s *CashbackService) HandleBadgeUnlocked(ctx context.Context, event domain.Event) error {
 	var payload events.BadgeUnlockedPayload
 	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		utils.LogError("Unmarshal error", err)
 		return err
 	}
-	user, err := s.repo.GetUser(ctx, event.AggregateID)
+	user, err := s.repo.GetUser(ctx, event.UserID)
 	if err != nil {
+		utils.LogError("GetUser error", err)
 		return err
 	}
 
-	if user.PaymentAccount == "" {
+	if user.PaymentAccount.String == "" {
 		return fmt.Errorf("user %s has no payment account configured", event.AggregateID)
 	}
 
@@ -55,6 +58,7 @@ func (s *CashbackService) HandleBadgeUnlocked(ctx context.Context, event domain.
 
 	created, err := s.repo.CreatePaymentIfNew(ctx, payment)
 	if err != nil {
+		utils.LogError("CreatePaymentIfNew error", err)
 		return err
 	}
 	if !created {
@@ -63,12 +67,13 @@ func (s *CashbackService) HandleBadgeUnlocked(ctx context.Context, event domain.
 
 	result, err := s.provider.SendCashback(ctx, domain.CashbackRequest{
 		UserID:         event.AggregateID,
-		PaymentAccount: user.PaymentAccount,
+		PaymentAccount: user.PaymentAccount.String,
 		AmountKobo:     s.amountKobo,
 		Reference:      fmt.Sprintf("cashback-%s-%s", payload.BadgeCode, event.AggregateID),
 		Reason:         "Badge cashback",
 	})
 	if err != nil {
+		utils.LogError("SendCashback error", err)
 		return s.repo.MarkPaymentFailed(ctx, payment.ID, err.Error())
 	}
 
