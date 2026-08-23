@@ -21,26 +21,25 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/core/services"
 	"github.com/QUDUSKUNLE/Bumpa/core/services/badges"
 	"github.com/QUDUSKUNLE/Bumpa/core/services/cashback"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/labstack/echo/v4"
 )
 
-func seedUser(ctx context.Context, repo *repositories.Repository) error {
-	user := db.CreateUserParams{
-		Name:  "Jane Doe",
-		Email: "jane@example.com",
-		Phone: pgtype.Text{String: "+2348000000000", Valid: true},
-		PaymentAccount: pgtype.Text{
-			String: "acct_123456",
-			Valid:  true,
-		},
-	}
+// func seedUser(ctx context.Context, repo *repositories.Repository) error {
+// 	user := db.CreateUserParams{
+// 		Name:  "Jane Doe",
+// 		Email: "jane@example.com",
+// 		Phone: pgtype.Text{String: "+2348000000000", Valid: true},
+// 		PaymentAccount: pgtype.Text{
+// 			String: "acct_123456",
+// 			Valid:  true,
+// 		},
+// 	}
 
-	_, err := repo.CreateUser(ctx, user)
-	return err
-}
+// 	_, err := repo.CreateUser(ctx, user)
+// 	return err
+// }
 
 func main() {
 
@@ -65,9 +64,9 @@ func main() {
 
 	repo := repositories.NewRepository(store, conn)
 
-	if err := seedUser(context.Background(), repo); err != nil {
-		log.Printf("seed user: %v", err)
-	}
+	// if err := seedUser(context.Background(), repo); err != nil {
+	// 	log.Printf("seed user: %v", err)
+	// }
 
 	service := services.NewServiceAdapter(repo)
 	httpHandler := handlers.NewHttpAdapter(*service)
@@ -99,10 +98,7 @@ func main() {
 		AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAuthorization},
 	}))
 
-	// Plug echo into PublicRoutesAdaptor
-	public := e.Group("")
-
-	routes.PublicRoutesAdaptor(public, httpHandler)
+	routes.PublicRoutesAdaptor(e.Group(""), httpHandler)
 
 	if cfg.HTTP_PORT == "" {
 		cfg.HTTP_PORT = "8080"
@@ -123,5 +119,4 @@ func main() {
 	if err := e.Shutdown(ctx); err != nil {
 		log.Printf("shutdown server: %v", err)
 	}
-
 }
