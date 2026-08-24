@@ -5,9 +5,18 @@ import (
 )
 
 type CashbackRequest struct {
-	UserID         pgtype.UUID
-	PaymentAccount string
-	AmountKobo     int64
-	Reference      string
-	Reason         string
+	Source           string
+	UserID           pgtype.UUID
+	PaymentAccount   string
+	RecipientAccount string
+	Currency         string
+	AmountKobo       int64
+	Reference        string
+	AccountReference string
+	Reason           string
+}
+
+type FinaliseCashBackRequest struct {
+	TransferCode string
+	Otp          string
 }

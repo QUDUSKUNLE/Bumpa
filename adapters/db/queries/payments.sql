@@ -23,3 +23,17 @@ UPDATE payments
 SET status = 'failed',
   provider_reference = $2
 WHERE id = $1;
+
+-- name: GetPaymentByUserAndBadge :one
+SELECT
+    id,
+    user_id,
+    badge_code,
+    amount_kobo,
+    status,
+    provider_reference,
+    created_at
+FROM payments
+WHERE user_id = $1
+  AND badge_code = $2
+LIMIT 1;

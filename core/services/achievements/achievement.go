@@ -124,12 +124,13 @@ func (s *AchievementService) ProcessPurchase(
 			}
 
 			evt := domain.Event{
-				ID:          uuid.New(),
-				UserID:      uuid.UUID(userID.Bytes),
-				Type:        "AchievementUnlocked",
-				OccurredAt:  time.Now().UTC(),
-				AggregateID: uuid.UUID(userID.Bytes),
-				Payload:     body,
+				ID:             uuid.New(),
+				UserID:         uuid.UUID(userID.Bytes),
+				Type:           "AchievementUnlocked",
+				OccurredAt:     time.Now().UTC(),
+				AggregateID:    uuid.UUID(userID.Bytes),
+				Payload:        body,
+				PaymentAccount: purchase.PaymentAccount,
 			}
 
 			if err := tx.AddOutboxEvent(ctx, evt); err != nil {
@@ -164,6 +165,19 @@ func (p *AchievementService) Process(ctx context.Context) error {
 			Payload:     event.Payload,
 		}
 
+		// THis has to be handled better
+		user, err := p.repo.GetUser(ctx, event.AggregateID)
+		if err != nil {
+			utils.LogError(
+				"Failed fetching user data %s: %v",
+				event.ID,
+				err,
+			)
+			continue
+		}
+
+		evt.PaymentAccount = user.PaymentAccount.String
+
 		if err := p.bus.Publish(ctx, evt); err != nil {
 			utils.LogError(
 				"Failed publishing outbox event %s: %v",
@@ -173,16 +187,16 @@ func (p *AchievementService) Process(ctx context.Context) error {
 			continue
 		}
 
-		// if err := p.repo.MarkOutboxEventProcessed(
-		//     ctx,
-		//     event.ID,
-		// ); err != nil {
-		//     utils.LogError(
-		//         "Failed marking outbox event %s as processed: %v",
-		//         event.ID,
-		//         err,
-		//     )
-		// }
+		if err := p.repo.MarkOutboxEventProcessed(
+			ctx,
+			event.ID,
+		); err != nil {
+			utils.LogError(
+				"Failed marking outbox event %s as processed: %v",
+				event.ID,
+				err,
+			)
+		}
 	}
 
 	return nil

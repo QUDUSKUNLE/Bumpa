@@ -37,7 +37,7 @@ func (r *Repository) CreatePaymentIfNew(ctx context.Context, payment domain.Paym
 
 func (r *Repository) MarkPaymentFailed(ctx context.Context, id pgtype.UUID, providerRef string) error {
 	if err := r.queries.MarkPaymentFailed(ctx, db.MarkPaymentFailedParams{
-		ID:               id,
+		ID:                id,
 		ProviderReference: pgtype.Text{String: providerRef, Valid: true},
 	}); err != nil {
 		utils.LogError("MarkPaymentFailed Repositories Error: %v", err)
@@ -55,4 +55,20 @@ func (r *Repository) MarkPaymentSuccessful(ctx context.Context, id pgtype.UUID, 
 		return err
 	}
 	return nil
+}
+
+func (r *Repository) GetPaymentByUserAndBadge(ctx context.Context, userID pgtype.UUID, badgeCode string) (*domain.Payment, error) {
+	payment, err := r.queries.GetPaymentByUserAndBadge(ctx, db.GetPaymentByUserAndBadgeParams{UserID: userID, BadgeCode: badgeCode})
+	if err != nil {
+		return nil, err
+	}
+	return &domain.Payment{
+		ID:          payment.ID,
+		UserID:      payment.UserID,
+		BadgeCode:   payment.BadgeCode,
+		AmountKobo:  payment.AmountKobo,
+		Status:      payment.Status,
+		ProviderRef: payment.ProviderReference.String,
+		CreatedAt:   payment.CreatedAt.Time,
+	}, nil
 }

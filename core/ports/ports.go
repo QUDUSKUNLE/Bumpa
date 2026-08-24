@@ -26,6 +26,11 @@ type RepositoryPorts interface {
 
 	CreatePaymentIfNew(ctx context.Context, payment domain.Payment) (bool, error)
 	MarkPaymentSuccessful(ctx context.Context, id pgtype.UUID, providerRef string) error
+	GetPaymentByUserAndBadge(
+		ctx context.Context,
+		userID pgtype.UUID,
+		badgeCode string,
+	) (*domain.Payment, error)
 	MarkPaymentFailed(ctx context.Context, id pgtype.UUID, reason string) error
 	GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]db.OutboxEvent, error)
 	MarkOutboxEventProcessed(

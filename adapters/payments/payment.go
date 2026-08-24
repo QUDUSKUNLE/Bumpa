@@ -5,187 +5,140 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/QUDUSKUNLE/Bumpa/core/domain"
+	"github.com/QUDUSKUNLE/Bumpa/core/utils"
 )
 
 type (
-	PaymentHandler struct {
+	PaystackConfig struct {
+		SecretKey  string
 		BaseURL    string
-		APIKey     string
 		HTTPClient *http.Client
 	}
-	PaystackConfig struct {
-		SecretKey string
-		BaseURL   string
-	}
-	PaystackTransactionResponse struct {
-		Status  bool   `json:"status"`
-		Message string `json:"message"`
-		Data    struct {
-			AuthorizationURL string `json:"authorization_url"`
-			AccessCode       string `json:"access_code"`
-			Reference        string `json:"reference"`
-		} `json:"data"`
-	}
-	Authorization struct {
-		AuthorizationCode string `json:"authorization_code"`
-		CardType          string `json:"card_type"`
-		Last4             string `json:"last4"`
-		ExpMonth          string `json:"exp_month"`
-		ExpYear           string `json:"exp_year"`
-		Bank              string `json:"bank"`
-		Brand             string `json:"brand"`
-	}
 	Data struct {
-		Status        string                 `json:"status"`
-		Reference     string                 `json:"reference"`
-		Amount        float64                `json:"amount"`
-		Channel       string                 `json:"channel"`
-		Currency      string                 `json:"currency"`
-		PaidAt        string                 `json:"paid_at"`
-		CreatedAt     string                 `json:"created_at"`
-		Customer      Customer               `json:"customer"`
-		Authorization Authorization          `json:"authorization"`
-		Fees          float64                `json:"fees"`
-		Metadata      map[string]interface{} `json:"metadata"`
+		TransferSessionID []any                  `json:"transfersessionid"`
+		TransferTrials    []any                  `json:"transfertrials"`
+		Domain            string                 `json:"domain"`
+		Amount            float64                `json:"amount"`
+		Currency          string                 `json:"currency"`
+		Reference         string                 `json:"reference"`
+		Source            string                 `json:"source"`
+		Reason            string                 `json:"reason"`
+		Status            string                 `json:"status"`
+		TransferCode      string                 `json:"transfer_code"`
+		ID                int                    `json:"id"`
+		Integration       int                    `json:"integration"`
+		Request           int                    `json:"request"`
+		Recipient         int                    `json:"recipient"`
+		CreatedAt         string                 `json:"created_at"`
+		UpdatedAt         string                 `json:"updated_at"`
+		Metadata          map[string]interface{} `json:"metadata"`
 	}
-	PaystackVerificationResponse struct {
+	PaystackResponse struct {
 		Status  bool   `json:"status"`
 		Message string `json:"message"`
 		Data    Data   `json:"data"`
-	}
-	Customer struct {
-		ID           int    `json:"id"`
-		FirstName    string `json:"first_name"`
-		LastName     string `json:"last_name"`
-		Email        string `json:"email"`
-		CustomerCode string `json:"customer_code"`
-		Phone        string `json:"phone"`
 	}
 	PaystackAdapter struct {
 		config *PaystackConfig
 	}
 )
 
-func (p *PaymentHandler) SendCashback(ctx context.Context, req domain.CashbackRequest) (domain.PaymentResult, error) {
+func (p *PaystackAdapter) SendCashback(
+	ctx context.Context,
+	req domain.CashbackRequest,
+) (PaystackResponse, error) {
+
 	payload := map[string]any{
-		"account":     req.PaymentAccount,
-		"amount_kobo": req.AmountKobo,
-		"reference":   req.Reference,
-		"reason":      req.Reason,
+		"source":    req.Source,
+		"amount":    req.AmountKobo,
+		"recipient": req.PaymentAccount,
+		"reference": req.Reference,
+		"reason":    req.Reason,
+		"currency":  req.Currency,
 	}
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return domain.PaymentResult{}, err
+		return PaystackResponse{}, err
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.BaseURL+"/transfers", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		p.config.BaseURL+"/transfer",
+		bytes.NewReader(body),
+	)
 	if err != nil {
-		return domain.PaymentResult{}, err
+		return PaystackResponse{}, err
 	}
 
-	httpReq.Header.Set("Authorization", "Bearer "+p.APIKey)
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set(
+		"Authorization",
+		"Bearer "+p.config.SecretKey,
+	)
+	httpReq.Header.Set(
+		"Content-Type",
+		"application/json",
+	)
 
-	resp, err := p.HTTPClient.Do(httpReq)
+	resp, err := p.config.HTTPClient.Do(httpReq)
 	if err != nil {
-		return domain.PaymentResult{}, err
+		return PaystackResponse{}, err
 	}
 	defer resp.Body.Close()
 
-	var out struct {
-		Reference string `json:"reference"`
-		Status    string `json:"status"`
+	// Read the complete response body first.
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return PaystackResponse{}, err
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return domain.PaymentResult{}, err
+	utils.LogInfo(
+		"Paystack response: status=%d body=%s",
+		resp.StatusCode,
+		string(responseBody),
+	)
+
+	// HTTP error from Paystack.
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return PaystackResponse{}, fmt.Errorf(
+			"paystack returned HTTP %d: %s",
+			resp.StatusCode,
+			string(responseBody),
+		)
 	}
 
-	return domain.PaymentResult{
-		ProviderReference: out.Reference,
-		Status:            out.Status,
-	}, nil
+	// Successful HTTP response but empty body.
+	if len(responseBody) == 0 {
+		return PaystackResponse{}, fmt.Errorf(
+			"paystack returned HTTP %d with empty response body",
+			resp.StatusCode,
+		)
+	}
+
+	var out PaystackResponse
+
+	if err := json.Unmarshal(responseBody, &out); err != nil {
+		return PaystackResponse{}, fmt.Errorf(
+			"decode paystack response: %w; body=%s",
+			err,
+			string(responseBody),
+		)
+	}
+
+	return out, nil
+}
+
+func (p *PaystackAdapter) FinaliseCashBack(ctx context.Context, req domain.FinaliseCashBackRequest) (PaystackResponse, error) {
+	return PaystackResponse{}, nil
 }
 
 func NewPaystackAdapter(con *PaystackConfig) *PaystackAdapter {
 	return &PaystackAdapter{
 		config: con,
 	}
-}
-
-func (p *PaystackAdapter) InitializeTransaction(email, reference string, amount float64, metadata map[string]interface{}) (*PaystackTransactionResponse, error) {
-	url := fmt.Sprintf("%s/transaction/initialize", p.config.BaseURL)
-
-	// Paystack expects amount in kobo (multiply by 100)
-	amountInKobo := int64(amount * 100)
-
-	payload := map[string]interface{}{
-		"email":     email,
-		"amount":    amountInKobo,
-		"reference": reference,
-		"metadata":  metadata,
-		"currency":  "NGN",
-	}
-
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.config.SecretKey))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var result PaystackTransactionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
-// VerifyTransaction verifies a transaction using its reference
-func (p *PaystackAdapter) VerifyTransaction(reference string) (*PaystackVerificationResponse, error) {
-	url := fmt.Sprintf("%s/transaction/verify/%s", p.config.BaseURL, reference)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error creating request: %v", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.config.SecretKey))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error making request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	var result PaystackVerificationResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("error decoding response: %v", err)
-	}
-
-	return &result, nil
 }

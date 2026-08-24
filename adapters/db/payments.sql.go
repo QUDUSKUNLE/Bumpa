@@ -49,6 +49,51 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (p
 	return id, err
 }
 
+const getPaymentByUserAndBadge = `-- name: GetPaymentByUserAndBadge :one
+SELECT
+    id,
+    user_id,
+    badge_code,
+    amount_kobo,
+    status,
+    provider_reference,
+    created_at
+FROM payments
+WHERE user_id = $1
+  AND badge_code = $2
+LIMIT 1
+`
+
+type GetPaymentByUserAndBadgeParams struct {
+	UserID    pgtype.UUID `json:"user_id"`
+	BadgeCode string      `json:"badge_code"`
+}
+
+type GetPaymentByUserAndBadgeRow struct {
+	ID                pgtype.UUID        `json:"id"`
+	UserID            pgtype.UUID        `json:"user_id"`
+	BadgeCode         string             `json:"badge_code"`
+	AmountKobo        int64              `json:"amount_kobo"`
+	Status            string             `json:"status"`
+	ProviderReference pgtype.Text        `json:"provider_reference"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetPaymentByUserAndBadge(ctx context.Context, arg GetPaymentByUserAndBadgeParams) (GetPaymentByUserAndBadgeRow, error) {
+	row := q.db.QueryRow(ctx, getPaymentByUserAndBadge, arg.UserID, arg.BadgeCode)
+	var i GetPaymentByUserAndBadgeRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.BadgeCode,
+		&i.AmountKobo,
+		&i.Status,
+		&i.ProviderReference,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const markPaymentFailed = `-- name: MarkPaymentFailed :exec
 UPDATE payments
 SET status = 'failed',

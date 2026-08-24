@@ -26,11 +26,16 @@ func NewOutboxProcessor(repo ports.RepositoryPorts, bus events.EventBus) *Outbox
 }
 
 // Process publishes pending outbox events.
-func (p *OutboxProcessor) Process(ctx context.Context) error {
+func (p *OutboxProcessor) OutboxProcessor(ctx context.Context) error {
 	eventArray, err := p.repo.GetPendingOutboxEvents(ctx, 100)
 	if err != nil {
 		return err
 	}
+
+	utils.LogInfo(
+		"OutboxProcessor: found %d pending events",
+		len(eventArray),
+	)
 
 	for _, event := range eventArray {
 		evt := events.Event{
@@ -63,12 +68,13 @@ func (p *OutboxProcessor) processEvent(
 ) error {
 
 	evt := domain.Event{
-		ID:          event.ID,
-		UserID:      event.AggregateID,
-		Type:        "AchievementUnlocked",
-		AggregateID: event.AggregateID,
-		OccurredAt:  event.OccurredAt,
-		Payload:     event.Payload,
+		ID:             event.ID,
+		UserID:         event.AggregateID,
+		Type:           event.Type,
+		AggregateID:    event.AggregateID,
+		OccurredAt:     event.OccurredAt,
+		Payload:        event.Payload,
+		PaymentAccount: event.PaymentAccount,
 	}
 
 	utils.LogInfo(
@@ -80,13 +86,29 @@ func (p *OutboxProcessor) processEvent(
 
 	// Publish FIRST.
 	if err := p.bus.Publish(ctx, evt); err != nil {
+		utils.LogError(
+			"Failed publishing outbox event %s: %v",
+			event.ID,
+			err,
+		)
 		return fmt.Errorf("publish event: %w", err)
 	}
+
+	utils.LogInfo(
+		"Successfully published outbox event ID=%s Type=%s",
+		event.ID,
+		event.Type,
+	)
 
 	id := pgtype.UUID{Bytes: event.ID, Valid: true}
 
 	// Only mark as processed after successful publication.
 	if err := p.repo.MarkOutboxEventProcessed(ctx, id); err != nil {
+		utils.LogError(
+			"Failed marking outbox event %s processed: %v",
+			event.ID,
+			err,
+		)
 		return fmt.Errorf("mark event processed: %w", err)
 	}
 
@@ -121,7 +143,7 @@ func (p *OutboxProcessor) Run(ctx context.Context) {
 }
 
 func (p *OutboxProcessor) runOnce(ctx context.Context) {
-	if err := p.Process(ctx); err != nil {
+	if err := p.OutboxProcessor(ctx); err != nil {
 		utils.LogError(
 			"Outbox processor error: %v",
 			err,

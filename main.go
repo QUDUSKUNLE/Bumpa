@@ -23,25 +23,26 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/core/services/cashback"
 	"github.com/QUDUSKUNLE/Bumpa/core/services/outboxprocessor"
 	"github.com/QUDUSKUNLE/Bumpa/core/utils"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/labstack/echo/v4"
 )
 
-// func seedUser(ctx context.Context, repo *repositories.Repository) error {
-// 	user := db.CreateUserParams{
-// 		Name:  "Jane Doe",
-// 		Email: "jane@example.com",
-// 		Phone: pgtype.Text{String: "+2348000000000", Valid: true},
-// 		PaymentAccount: pgtype.Text{
-// 			String: "acct_123456",
-// 			Valid:  true,
-// 		},
-// 	}
+func seedUser(ctx context.Context, repo *repositories.Repository) error {
+	user := db.CreateUserParams{
+		Name:  "Qudus Yekeen Adekunle335",
+		Email: "qudus.adekunle@example.com",
+		Phone: pgtype.Text{String: "+23480000000001", Valid: true},
+		PaymentAccount: pgtype.Text{
+			String: "RCP_m7ljkv8leesep7p",
+			Valid:  true,
+		},
+	}
 
-// 	_, err := repo.CreateUser(ctx, user)
-// 	return err
-// }
+	_, err := repo.CreateUser(ctx, user)
+	return err
+}
 
 func main() {
 	// Load configuration
@@ -69,9 +70,9 @@ func main() {
 
 	repo := repositories.NewRepository(store, conn)
 
-	// if err := seedUser(context.Background(), repo); err != nil {
-	// 	log.Printf("seed user: %v", err)
-	// }
+	if err := seedUser(ctx, repo); err != nil {
+		log.Printf("seed user: %v", err)
+	}
 
 	// Event bus
 	bus := events.NewEventBus()
@@ -81,12 +82,15 @@ func main() {
 
 	badgeService := badges.NewBadgeService(repo, badges.BadgeDefinition(), *bus)
 
-	paymentProvider := &payments.PaymentHandler{
-		BaseURL:    "https://api.example.com",
-		APIKey:     "demo-key",
-		HTTPClient: &http.Client{Timeout: 10 * time.Second},
-	}
-	cashbackSvc := cashback.NewCashbackService(repo, paymentProvider)
+	// Paystack Service
+	paymentService := payments.NewPaystackAdapter(&payments.PaystackConfig{
+		SecretKey:  cfg.PAYSTACK_SECRET_KEY,
+		BaseURL:    cfg.PAYSTACK_BASE_URL,
+		HTTPClient: &http.Client{},
+	})
+
+	// paymentProvider := payments.NewPaystackAdapter()
+	cashbackSvc := cashback.NewCashbackService(repo, *paymentService)
 
 	bus.Subscribe(
 		"AchievementUnlocked",
@@ -104,8 +108,15 @@ func main() {
 
 	bus.Subscribe(
 		"BadgeUnlocked",
-		func(ctx context.Context, evt domain.Event) error {
-			utils.LogInfo("Triggered Subscribe BadgeUnlocked: %v", nil)
+		func(
+			ctx context.Context,
+			evt domain.Event,
+		) error {
+			utils.LogInfo(
+				"Triggered Subscribe BadgeUnlocked: eventID=%s userID=%s",
+				evt.ID,
+				evt.UserID,
+			)
 			return cashbackSvc.HandleBadgeUnlocked(ctx, evt)
 		},
 	)
