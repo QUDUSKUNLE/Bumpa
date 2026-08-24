@@ -25,3 +25,7 @@ func (r *Repository) AddOutboxEvent(ctx context.Context, event domain.Event) err
 func (r *Repository) GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]db.OutboxEvent, error) {
 	return r.queries.GetPendingOutBusEvent(ctx, int32(batchSize))
 }
+
+func (r *Repository) MarkOutboxEventProcessed(ctx context.Context, id pgtype.UUID) error {
+	return r.queries.MarkOutboxEventProcessed(ctx, id)
+}

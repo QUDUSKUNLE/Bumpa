@@ -87,3 +87,15 @@ func (q *Queries) GetPendingOutBusEvent(ctx context.Context, limit int32) ([]Out
 	}
 	return items, nil
 }
+
+const markOutboxEventProcessed = `-- name: MarkOutboxEventProcessed :exec
+UPDATE outbox_events
+SET published_at = NOW()
+WHERE id = $1
+  AND published_at IS NULL
+`
+
+func (q *Queries) MarkOutboxEventProcessed(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markOutboxEventProcessed, id)
+	return err
+}

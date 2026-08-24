@@ -21,6 +21,7 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/core/services"
 	"github.com/QUDUSKUNLE/Bumpa/core/services/badges"
 	"github.com/QUDUSKUNLE/Bumpa/core/services/cashback"
+	"github.com/QUDUSKUNLE/Bumpa/core/services/outboxprocessor"
 	"github.com/QUDUSKUNLE/Bumpa/core/utils"
 	"github.com/labstack/echo/v4/middleware"
 
@@ -43,18 +44,21 @@ import (
 // }
 
 func main() {
-
 	// Load configuration
 	cfg, err := config.LoadEnvironmentVariables()
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
+	// Application context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Initialize database with custom configuration
 	dbConfig := config.DBConfig()
 
 	store, conn, err := db.DatabaseConnection(
-		context.Background(),
+		ctx,
 		cfg.DATABASE_URL,
 		dbConfig,
 	)
@@ -69,7 +73,9 @@ func main() {
 	// 	log.Printf("seed user: %v", err)
 	// }
 
+	// Event bus
 	bus := events.NewEventBus()
+
 	service := services.NewServiceAdapter(repo, *bus)
 	httpHandler := handlers.NewHttpAdapter(*service)
 
@@ -82,32 +88,59 @@ func main() {
 	}
 	cashbackSvc := cashback.NewCashbackService(repo, paymentProvider)
 
-	bus.Subscribe("AchievementUnlocked", func(ctx context.Context, evt domain.Event) error {
-		utils.LogInfo("Triggered Subscribe AchievementUnlocked: %v", nil)
-		return badgeService.HandleAchievementUnlocked(ctx, events.Event{
-			ID:          evt.ID,
-			UserID:      evt.UserID,
-			Type:        evt.Type,
-			OccurredAt:  evt.OccurredAt,
-			AggregateID: evt.AggregateID,
-			Payload:     evt.Payload,
+	bus.Subscribe(
+		"AchievementUnlocked",
+		func(ctx context.Context, evt domain.Event) error {
+			utils.LogInfo("Triggered Subscribe AchievementUnlocked: %v", nil)
+			return badgeService.HandleAchievementUnlocked(ctx, events.Event{
+				ID:          evt.ID,
+				UserID:      evt.UserID,
+				Type:        evt.Type,
+				OccurredAt:  evt.OccurredAt,
+				AggregateID: evt.AggregateID,
+				Payload:     evt.Payload,
+			})
 		})
-	})
 
-	bus.Subscribe("BadgeUnlocked", func(ctx context.Context, evt domain.Event) error {
-		utils.LogInfo("Triggered Subscribe BadgeUnlocked: %v", nil)
-		return cashbackSvc.HandleBadgeUnlocked(ctx, evt)
-	})
+	bus.Subscribe(
+		"BadgeUnlocked",
+		func(ctx context.Context, evt domain.Event) error {
+			utils.LogInfo("Triggered Subscribe BadgeUnlocked: %v", nil)
+			return cashbackSvc.HandleBadgeUnlocked(ctx, evt)
+		},
+	)
+
+	// --------------------------------------------------
+	// Outbox processor
+	// --------------------------------------------------
+	outboxProcessor := outboxprocessor.NewOutboxProcessor(repo, *bus)
+	go outboxProcessor.Run(ctx)
+
+	// --------------------------------------------------
+	// HTTP server
+	// --------------------------------------------------
 
 	e := echo.New()
 
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},
-		AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAuthorization},
-	}))
+	e.Use(middleware.CORSWithConfig(
+		middleware.CORSConfig{
+			AllowOrigins: []string{"*"},
+			AllowMethods: []string{
+				http.MethodGet,
+				http.MethodPost,
+				http.MethodOptions,
+			},
+			AllowHeaders: []string{
+				echo.HeaderContentType,
+				echo.HeaderAuthorization,
+			},
+		},
+	))
 
-	routes.PublicRoutesAdaptor(e.Group(""), httpHandler)
+	routes.PublicRoutesAdaptor(
+		e.Group(""),
+		httpHandler,
+	)
 
 	if cfg.HTTP_PORT == "" {
 		cfg.HTTP_PORT = "8081"
@@ -119,13 +152,28 @@ func main() {
 		}
 	}()
 
+	// --------------------------------------------------
+	// Wait for shutdown signal
+	// --------------------------------------------------
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := e.Shutdown(ctx); err != nil {
+	log.Println("Shutdown signal received")
+
+	cancel()
+
+	// Give HTTP server time to finish requests
+	shutdownCtx, shutdownCancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
+	defer shutdownCancel()
+
+	if err := e.Shutdown(shutdownCtx); err != nil {
 		log.Printf("shutdown server: %v", err)
 	}
+
+	log.Println("Application stopped")
 }

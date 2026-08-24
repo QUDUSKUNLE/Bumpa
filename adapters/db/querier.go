@@ -21,6 +21,7 @@ type Querier interface {
 	GetPendingOutBusEvent(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	GetUser(ctx context.Context, id pgtype.UUID) (GetUserRow, error)
 	InsertUserAchievement(ctx context.Context, arg InsertUserAchievementParams) (pgtype.UUID, error)
+	MarkOutboxEventProcessed(ctx context.Context, id pgtype.UUID) error
 	MarkPaymentFailed(ctx context.Context, arg MarkPaymentFailedParams) error
 	MarkPaymentSuccessful(ctx context.Context, arg MarkPaymentSuccessfulParams) error
 	UpdateUserPaymentAccount(ctx context.Context, arg UpdateUserPaymentAccountParams) (UpdateUserPaymentAccountRow, error)

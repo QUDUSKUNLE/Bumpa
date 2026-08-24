@@ -28,4 +28,8 @@ type RepositoryPorts interface {
 	MarkPaymentSuccessful(ctx context.Context, id pgtype.UUID, providerRef string) error
 	MarkPaymentFailed(ctx context.Context, id pgtype.UUID, reason string) error
 	GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]db.OutboxEvent, error)
+	MarkOutboxEventProcessed(
+		ctx context.Context,
+		id pgtype.UUID,
+	) error
 }

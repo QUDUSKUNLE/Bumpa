@@ -17,3 +17,9 @@ FROM outbox_events
 WHERE published_at IS NULL
 ORDER BY created_at
 LIMIT $1;
+
+-- name: MarkOutboxEventProcessed :exec
+UPDATE outbox_events
+SET published_at = NOW()
+WHERE id = $1
+  AND published_at IS NULL;
