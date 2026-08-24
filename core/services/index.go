@@ -11,25 +11,23 @@ import (
 
 type ServicesHandler struct {
 	ports              ports.RepositoryPorts
-	AchievementService achievements.AchievementService
-	BadgeService       badges.BadgeService
-	// OutboxProcessorService outboxprocessor.OutboxProcessor
+	AchievementService achievements.Service
+	BadgeService       *badges.BadgeService
 }
 
-func NewServiceAdapter(repositoryPort ports.RepositoryPorts, bus events.EventBus) *ServicesHandler {
+func NewServiceAdapter(repositoryPort ports.RepositoryPorts, bus events.EventPublisher) *ServicesHandler {
 	return &ServicesHandler{
 		ports: repositoryPort,
-		AchievementService: *achievements.NewAchievementService(
+		AchievementService: achievements.NewAchievementService(
 			repositoryPort,
 			achievements.AchievementDefinition(),
 			bus,
 		),
-		BadgeService: *badges.NewBadgeService(
+		BadgeService: badges.NewBadgeService(
 			repositoryPort,
 			badges.BadgeDefinition(),
 			bus,
 		),
-		// OutboxProcessorService: *outboxprocessor.NewOutboxProcessor(repositoryPort, bus),
 	}
 }
 

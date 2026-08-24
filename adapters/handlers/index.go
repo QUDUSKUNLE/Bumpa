@@ -17,10 +17,12 @@ func NewHttpAdapter(service services.ServicesHandler) *HttpHandler {
 
 func ComputeResponseMessage(response Response) error {
 	return response.Context.JSON(
-		response.Status, echo.Map{
+		response.Status,
+		echo.Map{
 			"data":   response.Data,
 			"status": true,
-		})
+		},
+	)
 }
 
 type ValidationStruct struct {
@@ -29,7 +31,7 @@ type ValidationStruct struct {
 }
 
 type Response struct {
-	Status  int          `json:"status"`
-	Data    interface{}  `json:"data"`
-	Context echo.Context `json:"context"`
+	Status  int
+	Data    interface{}
+	Context echo.Context
 }

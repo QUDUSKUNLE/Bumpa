@@ -15,10 +15,10 @@ import (
 
 type OutboxProcessor struct {
 	repo ports.RepositoryPorts
-	bus  events.EventBus
+	bus  events.EventPublisher
 }
 
-func NewOutboxProcessor(repo ports.RepositoryPorts, bus events.EventBus) *OutboxProcessor {
+func NewOutboxProcessor(repo ports.RepositoryPorts, bus events.EventPublisher) *OutboxProcessor {
 	return &OutboxProcessor{
 		repo: repo,
 		bus:  bus,

@@ -16,7 +16,7 @@ import (
 )
 
 type AchievementService struct {
-	bus                    events.EventBus
+	bus                    events.EventPublisher
 	repo                   ports.RepositoryPorts
 	achievementDefinitions []events.AchievementDefinition
 }
@@ -71,7 +71,7 @@ func AchievementDefinition() []events.AchievementDefinition {
 	}
 }
 
-func NewAchievementService(repo ports.RepositoryPorts, defs []events.AchievementDefinition, bus events.EventBus) *AchievementService {
+func NewAchievementService(repo ports.RepositoryPorts, defs []events.AchievementDefinition, bus events.EventPublisher) *AchievementService {
 	return &AchievementService{
 		repo:                   repo,
 		achievementDefinitions: defs,
