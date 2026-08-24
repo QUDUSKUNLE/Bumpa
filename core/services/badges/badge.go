@@ -16,7 +16,7 @@ import (
 type BadgeService struct {
 	repo             ports.RepositoryPorts
 	badgeDefinitions []events.BadgeDefinition
-	bus              events.EventBus
+	bus              events.EventPublisher
 }
 
 func BadgeDefinition() []events.BadgeDefinition {
@@ -49,7 +49,7 @@ func BadgeDefinition() []events.BadgeDefinition {
 	}
 }
 
-func NewBadgeService(repo ports.RepositoryPorts, defs []events.BadgeDefinition, bus events.EventBus) *BadgeService {
+func NewBadgeService(repo ports.RepositoryPorts, defs []events.BadgeDefinition, bus events.EventPublisher) *BadgeService {
 	return &BadgeService{
 		repo:             repo,
 		badgeDefinitions: defs,

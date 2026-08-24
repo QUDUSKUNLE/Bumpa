@@ -77,10 +77,10 @@ func main() {
 	// Event bus
 	bus := events.NewEventBus()
 
-	service := services.NewServiceAdapter(repo, *bus)
+	service := services.NewServiceAdapter(repo, bus)
 	httpHandler := handlers.NewHttpAdapter(*service)
 
-	badgeService := badges.NewBadgeService(repo, badges.BadgeDefinition(), *bus)
+	badgeService := badges.NewBadgeService(repo, badges.BadgeDefinition(), bus)
 
 	// Paystack Service
 	paymentService := payments.NewPaystackAdapter(&payments.PaystackConfig{
@@ -124,7 +124,7 @@ func main() {
 	// --------------------------------------------------
 	// Outbox processor
 	// --------------------------------------------------
-	outboxProcessor := outboxprocessor.NewOutboxProcessor(repo, *bus)
+	outboxProcessor := outboxprocessor.NewOutboxProcessor(repo, bus)
 	go outboxProcessor.Run(ctx)
 
 	// --------------------------------------------------

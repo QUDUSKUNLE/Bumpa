@@ -8,6 +8,10 @@ import (
 
 type Handler func(context.Context, domain.Event) error
 
+type EventPublisher interface {
+	Publish(ctx context.Context, event domain.Event) error
+}
+
 type EventBus struct {
 	handlers map[string][]Handler
 }

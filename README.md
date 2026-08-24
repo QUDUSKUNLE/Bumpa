@@ -426,6 +426,18 @@ For example:
 DATABASE_URL=postgres://username:password@postgres:5432/bumpa?sslmode=disable
 ```
 
+## **Testing**
+
+The project uses Go's built-in testing framework and `testify` for assertions.
+
+### **Run All Tests**
+
+Run the complete test suite:
+
+```bash
+go test ./...
+```
+
 ## Docker Compose
 
 Start the application:

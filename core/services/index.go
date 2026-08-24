@@ -15,7 +15,7 @@ type ServicesHandler struct {
 	BadgeService       *badges.BadgeService
 }
 
-func NewServiceAdapter(repositoryPort ports.RepositoryPorts, bus events.EventBus) *ServicesHandler {
+func NewServiceAdapter(repositoryPort ports.RepositoryPorts, bus events.EventPublisher) *ServicesHandler {
 	return &ServicesHandler{
 		ports: repositoryPort,
 		AchievementService: achievements.NewAchievementService(
