@@ -7,7 +7,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3, $4
 )
-RETURNING id, name, email, phone, payment_account, created_at;
+RETURNING *;
 
 -- name: GetUser :one
 SELECT id, name, email, phone, payment_account, created_at
@@ -15,16 +15,6 @@ FROM users
 WHERE id = $1
 LIMIT 1;
 
--- name: GetUserByEmail :one
-SELECT id, name, email, phone, payment_account, created_at
-FROM users
-WHERE email = $1
-LIMIT 1;
-
--- name: ListUsers :many
-SELECT id, name, email, phone, payment_account, created_at
-FROM users
-ORDER BY created_at DESC;
 
 -- name: UpdateUserPaymentAccount :one
 UPDATE users

@@ -3,34 +3,93 @@ package achievements
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/QUDUSKUNLE/Bumpa/adapters/events"
 	"github.com/QUDUSKUNLE/Bumpa/core/domain"
 	"github.com/QUDUSKUNLE/Bumpa/core/ports"
+	"github.com/QUDUSKUNLE/Bumpa/core/utils"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/labstack/echo/v4"
 )
 
 type AchievementService struct {
-	repo                   ports.Repository
+	bus                    events.EventBus
+	repo                   ports.RepositoryPorts
 	achievementDefinitions []events.AchievementDefinition
 }
 
-func NewAchievementService(repo ports.Repository, defs []events.AchievementDefinition) *AchievementService {
+func AchievementDefinition() []events.AchievementDefinition {
+	return []events.AchievementDefinition{
+		{
+			Code:     "first_purchase",
+			Name:     "First Purchase",
+			Group:    "shopping",
+			Position: 1,
+			Condition: func(stats events.PurchaseStats) bool {
+				return stats.TotalPurchases >= 1
+			},
+		},
+		{
+			Code:     "three_purchases",
+			Name:     "Three Purchases",
+			Group:    "shopping",
+			Position: 2,
+			Condition: func(stats events.PurchaseStats) bool {
+				return stats.TotalPurchases >= 3
+			},
+		},
+		{
+			Code:     "five_purchases",
+			Name:     "Five Purchases",
+			Group:    "shopping",
+			Position: 3,
+			Condition: func(stats events.PurchaseStats) bool {
+				return stats.TotalPurchases >= 5
+			},
+		},
+		{
+			Code:     "ten_purchases",
+			Name:     "Ten Purchases",
+			Group:    "shopping",
+			Position: 4,
+			Condition: func(stats events.PurchaseStats) bool {
+				return stats.TotalPurchases >= 10
+			},
+		},
+		{
+			Code:     "twenty_purchases",
+			Name:     "Twenty Purchases",
+			Group:    "shopping",
+			Position: 5,
+			Condition: func(stats events.PurchaseStats) bool {
+				return stats.TotalPurchases >= 20
+			},
+		},
+	}
+}
+
+func NewAchievementService(repo ports.RepositoryPorts, defs []events.AchievementDefinition, bus events.EventBus) *AchievementService {
 	return &AchievementService{
 		repo:                   repo,
 		achievementDefinitions: defs,
+		bus:                    bus,
 	}
 }
 
 func (s *AchievementService) ProcessPurchase(
 	ctx context.Context,
-	userID uuid.UUID,
+	userID pgtype.UUID,
 	purchase events.Purchase,
 ) error {
-	return s.repo.WithTx(ctx, func(tx ports.Repository) error {
+	utils.LogInfo("Triggered ProcessPurchase: %v", nil)
+	err := s.repo.WithTx(ctx, func(tx ports.RepositoryPorts) error {
 		inserted, err := tx.InsertPurchaseIfNew(ctx, purchase)
+
 		if err != nil {
+			utils.LogError("InserPurchaseIfNew Service Error: %v", err)
 			return err
 		}
 		if !inserted {
@@ -38,10 +97,7 @@ func (s *AchievementService) ProcessPurchase(
 		}
 		stats, err := tx.GetPurchaseStats(ctx, userID)
 		if err != nil {
-			return err
-		}
-		user, err := tx.GetUser(ctx, userID)
-		if err != nil {
+			utils.LogError("Get Purchases Stats Service Error: %v", err)
 			return err
 		}
 
@@ -52,6 +108,7 @@ func (s *AchievementService) ProcessPurchase(
 
 			unlocked, err := tx.UnlockAchievementIfNew(ctx, userID, definition.Code)
 			if err != nil {
+				utils.LogError("UnlockAchievementIfNew Service Error: %v", err)
 				return err
 			}
 			if !unlocked {
@@ -60,24 +117,108 @@ func (s *AchievementService) ProcessPurchase(
 
 			payload := events.AchievementUnlockedPayload{
 				AchievementName: definition.Name,
-				User:            user,
 			}
 
 			body, err := json.Marshal(payload)
 			if err != nil {
+				utils.LogError("JSON Marshal Service Error: %v", err)
 				return err
 			}
 
-			if err := tx.AddOutboxEvent(ctx, domain.Event{
-				ID:          uuid.New(),
-				Type:        "AchievementUnlocked",
-				OccurredAt:  time.Now().UTC(),
-				AggregateID: userID,
-				Payload:     body,
-			}); err != nil {
+			evt := domain.Event{
+				ID:             uuid.New(),
+				UserID:         uuid.UUID(userID.Bytes),
+				Type:           "AchievementUnlocked",
+				OccurredAt:     time.Now().UTC(),
+				AggregateID:    uuid.UUID(userID.Bytes),
+				Payload:        body,
+				PaymentAccount: purchase.PaymentAccount,
+			}
+
+			if err := tx.AddOutboxEvent(ctx, evt); err != nil {
+				utils.LogError("AddOutboxEvent Service Error: %v", err)
 				return err
 			}
 		}
+		utils.LogInfo("Finished ProcessPurchase: %v", nil)
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *AchievementService) Process(ctx context.Context) error {
+	events, err := p.repo.GetPendingOutboxEvents(ctx, 100)
+	if err != nil {
+		return err
+	}
+
+	for _, event := range events {
+		evt := domain.Event{
+			ID:          uuid.UUID(event.ID.Bytes),
+			UserID:      uuid.UUID(event.AggregateID.Bytes),
+			Type:        event.EventType,
+			AggregateID: uuid.UUID(event.AggregateID.Bytes),
+			OccurredAt:  event.CreatedAt.Time,
+			Payload:     event.Payload,
+		}
+
+		// THis has to be handled better
+		user, err := p.repo.GetUser(ctx, event.AggregateID)
+		if err != nil {
+			utils.LogError(
+				"Failed fetching user data %s: %v",
+				event.ID,
+				err,
+			)
+			continue
+		}
+
+		evt.PaymentAccount = user.PaymentAccount.String
+
+		if err := p.bus.Publish(ctx, evt); err != nil {
+			utils.LogError(
+				"Failed publishing outbox event %s: %v",
+				event.ID,
+				err,
+			)
+			continue
+		}
+
+		if err := p.repo.MarkOutboxEventProcessed(
+			ctx,
+			event.ID,
+		); err != nil {
+			utils.LogError(
+				"Failed marking outbox event %s as processed: %v",
+				event.ID,
+				err,
+			)
+		}
+	}
+
+	return nil
+}
+
+func (p *AchievementService) GetUserAchievements(c echo.Context) error {
+	user_id := c.Param("user")
+	if user_id == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "user identity is required")
+	}
+	userID, err := uuid.Parse(user_id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	ctx := c.Request().Context()
+
+	res, err := p.repo.GetUserAchievements(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
 }

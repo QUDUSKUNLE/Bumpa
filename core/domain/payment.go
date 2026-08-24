@@ -3,12 +3,12 @@ package domain
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Payment struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
 	BadgeCode   string
 	AmountKobo  int64
 	Status      string
