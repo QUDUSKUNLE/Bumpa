@@ -3,6 +3,7 @@ package achievements
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/QUDUSKUNLE/Bumpa/adapters/events"
@@ -11,6 +12,7 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/core/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/labstack/echo/v4"
 )
 
 type AchievementService struct {
@@ -200,4 +202,23 @@ func (p *AchievementService) Process(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (p *AchievementService) GetUserAchievements(c echo.Context) error {
+	user_id := c.Param("user")
+	if user_id == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "user identity is required")
+	}
+	userID, err := uuid.Parse(user_id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	ctx := c.Request().Context()
+
+	res, err := p.repo.GetUserAchievements(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, res)
 }

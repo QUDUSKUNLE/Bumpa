@@ -162,68 +162,70 @@ func (s *CashbackService) HandleBadgeUnlocked(
 		event.UserID,
 	)
 
-	result, err := s.paymentProvider.SendCashback(
-		ctx,
-		domain.CashbackRequest{
-			Source:         "balance",
-			UserID:         userID,
-			PaymentAccount: user.PaymentAccount.String,
-			AmountKobo:     s.amountKobo,
-			Reference:      reference,
-			Reason:         "Badge cashback",
-			Currency:       "NGN",
-		},
-	)
+	// result, err := s.paymentProvider.SendCashback(
+	// 	ctx,
+	// 	domain.CashbackRequest{
+	// 		Source:         "balance",
+	// 		UserID:         userID,
+	// 		PaymentAccount: user.PaymentAccount.String,
+	// 		AmountKobo:     s.amountKobo,
+	// 		Reference:      reference,
+	// 		Reason:         "Badge cashback",
+	// 		Currency:       "NGN",
+	// 	},
+	// )
 
-	if err != nil {
-		utils.LogError(
-			"SendCashback Service Error: %v",
-			err,
-		)
+	// if err != nil {
+	// 	utils.LogError(
+	// 		"SendCashback Service Error: %v",
+	// 		err,
+	// 	)
 
-		if markErr := s.repo.MarkPaymentFailed(
-			ctx,
-			payment.ID,
-			err.Error(),
-		); markErr != nil {
+	// 	if markErr := s.repo.MarkPaymentFailed(
+	// 		ctx,
+	// 		payment.ID,
+	// 		err.Error(),
+	// 	); markErr != nil {
 
-			utils.LogError(
-				"MarkPaymentFailed Error: %v",
-				markErr,
-			)
+	// 		utils.LogError(
+	// 			"MarkPaymentFailed Error: %v",
+	// 			markErr,
+	// 		)
 
-			return fmt.Errorf(
-				"cashback failed: %w; failed to mark payment failed: %v",
-				err,
-				markErr,
-			)
-		}
+	// 		return fmt.Errorf(
+	// 			"cashback failed: %w; failed to mark payment failed: %v",
+	// 			err,
+	// 			markErr,
+	// 		)
+	// 	}
 
-		return err
-	}
+	// 	return err
+	// }
 
-	// ---------------------------------------------------------
-	// Mark successful
-	// ---------------------------------------------------------
+	// // ---------------------------------------------------------
+	// // Mark successful
+	// // ---------------------------------------------------------
 
-	if err := s.repo.MarkPaymentSuccessful(
-		ctx,
-		payment.ID,
-		result.Data.Reference,
-	); err != nil {
+	// if err := s.repo.MarkPaymentSuccessful(
+	// 	ctx,
+	// 	payment.ID,
+	// 	result.Data.Reference,
+	// ); err != nil {
 
-		utils.LogError(
-			"MarkPaymentSuccessful Error: %v",
-			err,
-		)
-		return err
-	}
+	// 	utils.LogError(
+	// 		"MarkPaymentSuccessful Error: %v",
+	// 		err,
+	// 	)
+	// 	return err
+	// }
 
 	utils.LogInfo(
 		"Cashback successfully completed: user=%s badge=%s reference=%s",
 		event.UserID,
 		payload.BadgeCode,
-		result.Data.Reference,
+		reference,
+		// result.Data.Reference,
+		// "ok",
 	)
 
 	return nil

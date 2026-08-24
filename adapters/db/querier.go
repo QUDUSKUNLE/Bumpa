@@ -21,6 +21,7 @@ type Querier interface {
 	GetPaymentByUserAndBadge(ctx context.Context, arg GetPaymentByUserAndBadgeParams) (GetPaymentByUserAndBadgeRow, error)
 	GetPendingOutBusEvent(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	GetUser(ctx context.Context, id pgtype.UUID) (GetUserRow, error)
+	GetUserAchievements(ctx context.Context, userID pgtype.UUID) (GetUserAchievementsRow, error)
 	InsertUserAchievement(ctx context.Context, arg InsertUserAchievementParams) (pgtype.UUID, error)
 	MarkOutboxEventProcessed(ctx context.Context, id pgtype.UUID) error
 	MarkPaymentFailed(ctx context.Context, arg MarkPaymentFailedParams) error

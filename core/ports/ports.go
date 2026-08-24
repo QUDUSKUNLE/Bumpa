@@ -33,6 +33,11 @@ type RepositoryPorts interface {
 	) (*domain.Payment, error)
 	MarkPaymentFailed(ctx context.Context, id pgtype.UUID, reason string) error
 	GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]db.OutboxEvent, error)
+	GetUserAchievements(
+		ctx context.Context,
+		userID pgtype.UUID,
+	) (db.GetUserAchievementsRow, error)
+
 	MarkOutboxEventProcessed(
 		ctx context.Context,
 		id pgtype.UUID,

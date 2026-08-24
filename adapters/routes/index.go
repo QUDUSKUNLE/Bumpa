@@ -8,8 +8,7 @@ import (
 func PublicRoutesAdaptor(public *echo.Group, handler *handlers.HttpHandler) *echo.Group {
 	public.GET("/", handler.Home)
 	public.GET("/health", handler.Health)
-	public.GET("/users/:user_id/achievement", handler.GetAchievement)
-	public = public.Group("/v1")
-	public.POST("/purchases", handler.CreatePurchase)
+	public.GET("/users/:user/achievements", handler.GetUserAchievements)
+	public.POST("/users/purchases", handler.CreatePurchase)
 	return public
 }

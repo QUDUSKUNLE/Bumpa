@@ -10,7 +10,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (r *Repository) UnlockAchievementIfNew(ctx context.Context, userID pgtype.UUID, achievementCode string) (bool, error) {
+func (r *Repository) UnlockAchievementIfNew(
+	ctx context.Context,
+	userID pgtype.UUID,
+	achievementCode string,
+) (bool, error) {
 	_, err := r.queries.InsertUserAchievement(ctx, db.InsertUserAchievementParams{
 		UserID:          userID,
 		AchievementCode: achievementCode,
@@ -27,4 +31,11 @@ func (r *Repository) UnlockAchievementIfNew(ctx context.Context, userID pgtype.U
 		return false, err
 	}
 	return true, nil
+}
+
+func (r *Repository) GetUserAchievements(
+	ctx context.Context,
+	userID pgtype.UUID,
+) (db.GetUserAchievementsRow, error) {
+	return r.queries.GetUserAchievements(ctx, userID)
 }
