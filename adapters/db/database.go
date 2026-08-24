@@ -64,6 +64,26 @@ func DatabaseConnection(
 
 	start := time.Now()
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+
+	var dbName, schema, host string
+
+	err = pool.QueryRow(ctx, `
+    SELECT
+        current_database(),
+        current_schema(),
+        COALESCE(inet_server_addr()::text, '')
+`).Scan(&dbName, &schema, &host)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf(
+		"DATABASE CONNECTION: db=%s schema=%s host=%s",
+		dbName,
+		schema,
+		host,
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to database: %w", err)
 	}

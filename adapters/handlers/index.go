@@ -7,13 +7,11 @@ import (
 
 type HttpHandler struct {
 	servicesAdapter services.ServicesHandler
-	// bus             events.EventBus
 }
 
 func NewHttpAdapter(service services.ServicesHandler) *HttpHandler {
 	return &HttpHandler{
 		servicesAdapter: service,
-		// bus:             *events.NewEventBus(),
 	}
 }
 

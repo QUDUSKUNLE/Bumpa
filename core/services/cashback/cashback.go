@@ -11,6 +11,7 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/core/ports"
 	"github.com/QUDUSKUNLE/Bumpa/core/utils"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PaymentProvider interface {
@@ -32,14 +33,15 @@ func NewCashbackService(repo ports.RepositoryPorts, provider PaymentProvider) *C
 }
 
 func (s *CashbackService) HandleBadgeUnlocked(ctx context.Context, event domain.Event) error {
+	utils.LogInfo("Triggered HandleBadgeUnlocked: %v", nil)
 	var payload events.BadgeUnlockedPayload
 	if err := json.Unmarshal(event.Payload, &payload); err != nil {
-		utils.LogError("Unmarshal error", err)
+		utils.LogError("Unmarshal Service: %v", err)
 		return err
 	}
-	user, err := s.repo.GetUser(ctx, event.UserID)
+	user, err := s.repo.GetUser(ctx, pgtype.UUID{Bytes: event.UserID, Valid: true})
 	if err != nil {
-		utils.LogError("GetUser error", err)
+		utils.LogError("GetUser Service Error: %v", err)
 		return err
 	}
 
@@ -48,8 +50,8 @@ func (s *CashbackService) HandleBadgeUnlocked(ctx context.Context, event domain.
 	}
 
 	payment := domain.Payment{
-		ID:         uuid.New(),
-		UserID:     event.AggregateID,
+		ID:         pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		UserID:     pgtype.UUID{Bytes: event.AggregateID, Valid: true},
 		BadgeCode:  payload.BadgeCode,
 		AmountKobo: s.amountKobo,
 		Status:     "pending",
@@ -58,7 +60,7 @@ func (s *CashbackService) HandleBadgeUnlocked(ctx context.Context, event domain.
 
 	created, err := s.repo.CreatePaymentIfNew(ctx, payment)
 	if err != nil {
-		utils.LogError("CreatePaymentIfNew error", err)
+		utils.LogError("CreatePaymentIfNew Service Error: %v", err)
 		return err
 	}
 	if !created {
@@ -66,16 +68,17 @@ func (s *CashbackService) HandleBadgeUnlocked(ctx context.Context, event domain.
 	}
 
 	result, err := s.provider.SendCashback(ctx, domain.CashbackRequest{
-		UserID:         event.AggregateID,
+		UserID:         pgtype.UUID{Bytes: event.AggregateID, Valid: true},
 		PaymentAccount: user.PaymentAccount.String,
 		AmountKobo:     s.amountKobo,
 		Reference:      fmt.Sprintf("cashback-%s-%s", payload.BadgeCode, event.AggregateID),
 		Reason:         "Badge cashback",
 	})
 	if err != nil {
-		utils.LogError("SendCashback error", err)
+		utils.LogError("SendCashback Service Error: %v", err)
 		return s.repo.MarkPaymentFailed(ctx, payment.ID, err.Error())
 	}
 
+	utils.LogInfo("Finished HandleBadgeUnlocked: %v", nil)
 	return s.repo.MarkPaymentSuccessful(ctx, payment.ID, result.ProviderReference)
 }

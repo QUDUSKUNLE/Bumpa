@@ -33,7 +33,7 @@ INSERT INTO purchases (
 ) VALUES (
   $1, $2, $3, $4
 )
-ON CONFLICT DO NOTHING
+ON CONFLICT (id) DO NOTHING
 RETURNING id, user_id, external_id, amount_kobo, created_at
 `
 

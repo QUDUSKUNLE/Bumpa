@@ -10,3 +10,10 @@ INSERT INTO outbox_events (
 )
 ON CONFLICT DO NOTHING
 RETURNING *;
+
+-- name: GetPendingOutBusEvent :many
+SELECT *
+FROM outbox_events
+WHERE published_at IS NULL
+ORDER BY created_at
+LIMIT $1;

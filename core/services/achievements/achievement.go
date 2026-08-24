@@ -3,7 +3,6 @@ package achievements
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/QUDUSKUNLE/Bumpa/adapters/events"
@@ -11,6 +10,7 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/core/ports"
 	"github.com/QUDUSKUNLE/Bumpa/core/utils"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AchievementService struct {
@@ -69,23 +69,25 @@ func AchievementDefinition() []events.AchievementDefinition {
 	}
 }
 
-func NewAchievementService(repo ports.RepositoryPorts, defs []events.AchievementDefinition) *AchievementService {
+func NewAchievementService(repo ports.RepositoryPorts, defs []events.AchievementDefinition, bus events.EventBus) *AchievementService {
 	return &AchievementService{
 		repo:                   repo,
 		achievementDefinitions: defs,
-		bus:                    *events.NewEventBus(),
+		bus:                    bus,
 	}
 }
 
 func (s *AchievementService) ProcessPurchase(
 	ctx context.Context,
-	userID uuid.UUID,
+	userID pgtype.UUID,
 	purchase events.Purchase,
 ) error {
-	return s.repo.WithTx(ctx, func(tx ports.RepositoryPorts) error {
+	utils.LogInfo("Triggered ProcessPurchase: %v", nil)
+	err := s.repo.WithTx(ctx, func(tx ports.RepositoryPorts) error {
 		inserted, err := tx.InsertPurchaseIfNew(ctx, purchase)
+
 		if err != nil {
-			utils.LogError("Log InserPurchaseIfNew", err)
+			utils.LogError("InserPurchaseIfNew Service Error: %v", err)
 			return err
 		}
 		if !inserted {
@@ -93,12 +95,7 @@ func (s *AchievementService) ProcessPurchase(
 		}
 		stats, err := tx.GetPurchaseStats(ctx, userID)
 		if err != nil {
-			utils.LogError("Get purchases stats", err)
-			return err
-		}
-		user, err := tx.GetUser(ctx, userID)
-		if err != nil {
-			utils.LogError("Get user error", err)
+			utils.LogError("Get Purchases Stats Service Error: %v", err)
 			return err
 		}
 
@@ -109,7 +106,7 @@ func (s *AchievementService) ProcessPurchase(
 
 			unlocked, err := tx.UnlockAchievementIfNew(ctx, userID, definition.Code)
 			if err != nil {
-				utils.LogError("UnlockAchievementIfNew error", err)
+				utils.LogError("UnlockAchievementIfNew Service Error: %v", err)
 				return err
 			}
 			if !unlocked {
@@ -118,33 +115,75 @@ func (s *AchievementService) ProcessPurchase(
 
 			payload := events.AchievementUnlockedPayload{
 				AchievementName: definition.Name,
-				User:            user.ID.String(),
 			}
 
 			body, err := json.Marshal(payload)
 			if err != nil {
-				utils.LogError("JSON Marshal error", err)
+				utils.LogError("JSON Marshal Service Error: %v", err)
 				return err
 			}
 
 			evt := domain.Event{
 				ID:          uuid.New(),
+				UserID:      uuid.UUID(userID.Bytes),
 				Type:        "AchievementUnlocked",
 				OccurredAt:  time.Now().UTC(),
-				AggregateID: userID,
+				AggregateID: uuid.UUID(userID.Bytes),
 				Payload:     body,
 			}
 
-			if err := s.bus.Publish(ctx, evt); err != nil {
-				fmt.Println("error publishing event")
-				return err
-			}
-
 			if err := tx.AddOutboxEvent(ctx, evt); err != nil {
-				utils.LogError("Error adding eventOutbox", err)
+				utils.LogError("AddOutboxEvent Service Error: %v", err)
 				return err
 			}
 		}
+		utils.LogInfo("Finished ProcessPurchase: %v", nil)
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *AchievementService) Process(ctx context.Context) error {
+	events, err := p.repo.GetPendingOutboxEvents(ctx, 100)
+	if err != nil {
+		return err
+	}
+
+	for _, event := range events {
+		evt := domain.Event{
+			ID:          uuid.UUID(event.ID.Bytes),
+			UserID:      uuid.UUID(event.AggregateID.Bytes),
+			Type:        event.EventType,
+			AggregateID: uuid.UUID(event.AggregateID.Bytes),
+			OccurredAt:  event.CreatedAt.Time,
+			Payload:     event.Payload,
+		}
+
+		if err := p.bus.Publish(ctx, evt); err != nil {
+			utils.LogError(
+				"Failed publishing outbox event %s: %v",
+				event.ID,
+				err,
+			)
+			continue
+		}
+
+		// if err := p.repo.MarkOutboxEventProcessed(
+		//     ctx,
+		//     event.ID,
+		// ); err != nil {
+		//     utils.LogError(
+		//         "Failed marking outbox event %s as processed: %v",
+		//         event.ID,
+		//         err,
+		//     )
+		// }
+	}
+
+	return nil
 }

@@ -5,13 +5,12 @@ import (
 
 	"github.com/QUDUSKUNLE/Bumpa/adapters/db"
 	"github.com/QUDUSKUNLE/Bumpa/core/domain"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (r *Repository) AddOutboxEvent(ctx context.Context, event domain.Event) error {
 	_, err := r.queries.CreateBusEvent(ctx, db.CreateBusEventParams{
-		ID:          pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		ID:          pgtype.UUID{Bytes: event.ID, Valid: true},
 		EventType:   event.Type,
 		AggregateID: pgtype.UUID{Bytes: event.AggregateID, Valid: true},
 		Payload:     event.Payload,
@@ -21,4 +20,8 @@ func (r *Repository) AddOutboxEvent(ctx context.Context, event domain.Event) err
 		return err
 	}
 	return nil
+}
+
+func (r *Repository) GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]db.OutboxEvent, error) {
+	return r.queries.GetPendingOutBusEvent(ctx, int32(batchSize))
 }

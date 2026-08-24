@@ -1,9 +1,11 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 type CashbackRequest struct {
-	UserID         uuid.UUID
+	UserID         pgtype.UUID
 	PaymentAccount string
 	AmountKobo     int64
 	Reference      string

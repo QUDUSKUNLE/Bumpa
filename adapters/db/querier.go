@@ -18,6 +18,7 @@ type Querier interface {
 	CreatePurchase(ctx context.Context, arg CreatePurchaseParams) (Purchase, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserBadge(ctx context.Context, arg CreateUserBadgeParams) (pgtype.UUID, error)
+	GetPendingOutBusEvent(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	GetUser(ctx context.Context, id pgtype.UUID) (GetUserRow, error)
 	InsertUserAchievement(ctx context.Context, arg InsertUserAchievementParams) (pgtype.UUID, error)
 	MarkPaymentFailed(ctx context.Context, arg MarkPaymentFailedParams) error

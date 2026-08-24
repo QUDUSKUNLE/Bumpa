@@ -52,3 +52,38 @@ func (q *Queries) CreateBusEvent(ctx context.Context, arg CreateBusEventParams) 
 	)
 	return i, err
 }
+
+const getPendingOutBusEvent = `-- name: GetPendingOutBusEvent :many
+SELECT id, event_type, aggregate_id, payload, published_at, created_at
+FROM outbox_events
+WHERE published_at IS NULL
+ORDER BY created_at
+LIMIT $1
+`
+
+func (q *Queries) GetPendingOutBusEvent(ctx context.Context, limit int32) ([]OutboxEvent, error) {
+	rows, err := q.db.Query(ctx, getPendingOutBusEvent, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OutboxEvent{}
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.EventType,
+			&i.AggregateID,
+			&i.Payload,
+			&i.PublishedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

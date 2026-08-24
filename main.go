@@ -21,6 +21,7 @@ import (
 	"github.com/QUDUSKUNLE/Bumpa/core/services"
 	"github.com/QUDUSKUNLE/Bumpa/core/services/badges"
 	"github.com/QUDUSKUNLE/Bumpa/core/services/cashback"
+	"github.com/QUDUSKUNLE/Bumpa/core/utils"
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/labstack/echo/v4"
@@ -68,10 +69,11 @@ func main() {
 	// 	log.Printf("seed user: %v", err)
 	// }
 
-	service := services.NewServiceAdapter(repo)
+	bus := events.NewEventBus()
+	service := services.NewServiceAdapter(repo, *bus)
 	httpHandler := handlers.NewHttpAdapter(*service)
 
-	badgeService := badges.NewBadgeService(repo, badges.BadgeDefinition())
+	badgeService := badges.NewBadgeService(repo, badges.BadgeDefinition(), *bus)
 
 	paymentProvider := &payments.PaymentHandler{
 		BaseURL:    "https://api.example.com",
@@ -80,13 +82,20 @@ func main() {
 	}
 	cashbackSvc := cashback.NewCashbackService(repo, paymentProvider)
 
-	bus := events.NewEventBus()
-
-	bus.Subscribe("BadgeUnlocked", func(ctx context.Context, evt domain.Event) error {
-		return badgeService.HandleAchievementUnlocked(ctx, events.Event{})
+	bus.Subscribe("AchievementUnlocked", func(ctx context.Context, evt domain.Event) error {
+		utils.LogInfo("Triggered Subscribe AchievementUnlocked: %v", nil)
+		return badgeService.HandleAchievementUnlocked(ctx, events.Event{
+			ID:          evt.ID,
+			UserID:      evt.UserID,
+			Type:        evt.Type,
+			OccurredAt:  evt.OccurredAt,
+			AggregateID: evt.AggregateID,
+			Payload:     evt.Payload,
+		})
 	})
 
 	bus.Subscribe("BadgeUnlocked", func(ctx context.Context, evt domain.Event) error {
+		utils.LogInfo("Triggered Subscribe BadgeUnlocked: %v", nil)
 		return cashbackSvc.HandleBadgeUnlocked(ctx, evt)
 	})
 
@@ -101,7 +110,7 @@ func main() {
 	routes.PublicRoutesAdaptor(e.Group(""), httpHandler)
 
 	if cfg.HTTP_PORT == "" {
-		cfg.HTTP_PORT = "8080"
+		cfg.HTTP_PORT = "8081"
 	}
 
 	go func() {

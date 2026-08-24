@@ -2,26 +2,34 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"github.com/QUDUSKUNLE/Bumpa/adapters/db"
 	"github.com/QUDUSKUNLE/Bumpa/core/utils"
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (r *Repository) GetUnlockedAchievementCount(ctx context.Context, userID uuid.UUID) (int, error) {
-	count, err := r.queries.CountUserAchievement(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+func (r *Repository) GetUnlockedAchievementCount(ctx context.Context, userID pgtype.UUID) (int, error) {
+	count, err := r.queries.CountUserAchievement(ctx, userID)
+
 	if err != nil {
-		utils.LogError("CountUserAchievement error", err)
+		utils.LogError("CountUserAchievement Repositories Error: %v", err)
 		return 0, err
 	}
 	return int(count), nil
 }
 
-func (r *Repository) UnlockBadgeIfNew(ctx context.Context, userID uuid.UUID, badgeCode string) (bool, error) {
-	_, err := r.queries.CreateUserBadge(ctx, db.CreateUserBadgeParams{UserID: pgtype.UUID{Bytes: userID, Valid: true}, BadgeCode: badgeCode})
+func (r *Repository) UnlockBadgeIfNew(ctx context.Context, userID pgtype.UUID, badgeCode string) (bool, error) {
+	_, err := r.queries.CreateUserBadge(
+		ctx,
+		db.CreateUserBadgeParams{UserID: userID, BadgeCode: badgeCode})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// User Badge Already Exist
+		return false, nil
+	}
 	if err != nil {
-		utils.LogError("CreateUserBadge error", err)
+		utils.LogError("CreateUserBadge Repositories Error: %v", err)
 		return false, err
 	}
 	return true, nil
