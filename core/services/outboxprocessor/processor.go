@@ -18,7 +18,10 @@ type OutboxProcessor struct {
 	bus  events.EventPublisher
 }
 
-func NewOutboxProcessor(repo ports.RepositoryPorts, bus events.EventPublisher) *OutboxProcessor {
+func NewOutboxProcessor(
+	repo ports.RepositoryPorts,
+	bus events.EventPublisher,
+) *OutboxProcessor {
 	return &OutboxProcessor{
 		repo: repo,
 		bus:  bus,
@@ -60,6 +63,36 @@ func (p *OutboxProcessor) OutboxProcessor(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (p *OutboxProcessor) Run(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	utils.LogInfo("Outbox processor started")
+
+	// Process immediately on startup.
+	p.runOnce(ctx)
+
+	for {
+		select {
+		case <-ctx.Done():
+			utils.LogInfo("Outbox processor stopped")
+			return
+
+		case <-ticker.C:
+			p.runOnce(ctx)
+		}
+	}
+}
+
+func (p *OutboxProcessor) runOnce(ctx context.Context) {
+	if err := p.OutboxProcessor(ctx); err != nil {
+		utils.LogError(
+			"Outbox processor error: %v",
+			err,
+		)
+	}
 }
 
 func (p *OutboxProcessor) processEvent(
@@ -119,34 +152,4 @@ func (p *OutboxProcessor) processEvent(
 	)
 
 	return nil
-}
-
-func (p *OutboxProcessor) Run(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	utils.LogInfo("Outbox processor started")
-
-	// Process immediately on startup.
-	p.runOnce(ctx)
-
-	for {
-		select {
-		case <-ctx.Done():
-			utils.LogInfo("Outbox processor stopped")
-			return
-
-		case <-ticker.C:
-			p.runOnce(ctx)
-		}
-	}
-}
-
-func (p *OutboxProcessor) runOnce(ctx context.Context) {
-	if err := p.OutboxProcessor(ctx); err != nil {
-		utils.LogError(
-			"Outbox processor error: %v",
-			err,
-		)
-	}
 }

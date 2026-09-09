@@ -78,25 +78,25 @@ func (m *mockOutboxRepository) GetUnlockedAchievementCount(
 }
 
 func (m *mockOutboxRepository) UnlockBadgeIfNew(
-    ctx context.Context,
-    userID pgtype.UUID,
-    badgeCode string,
+	ctx context.Context,
+	userID pgtype.UUID,
+	badgeCode string,
 ) (bool, error) {
-    return false, nil
+	return false, nil
 }
 
 func (m *mockOutboxRepository) AddOutboxEvent(
-    ctx context.Context,
-    event domain.Event,
+	ctx context.Context,
+	event domain.Event,
 ) error {
-    return nil
+	return nil
 }
 
 func (m *mockOutboxRepository) CreatePaymentIfNew(
-    ctx context.Context,
-    payment domain.Payment,
+	ctx context.Context,
+	payment domain.Payment,
 ) (bool, error) {
-    return false, nil
+	return false, nil
 }
 
 func (m *mockOutboxRepository) MarkPaymentSuccessful(
@@ -166,6 +166,11 @@ type mockEventPublisher struct {
 	publishedEvents []domain.Event
 }
 
+// Subscribe implements [events.EventPublisher].
+func (m *mockEventPublisher) Subscribe(eventType string, handler events.Handler) {
+	panic("unimplemented")
+}
+
 func (m *mockEventPublisher) Publish(
 	ctx context.Context,
 	event domain.Event,
@@ -188,7 +193,7 @@ var _ events.EventPublisher = (*mockEventPublisher)(nil)
 // Helpers
 // ------------------------------------------------------------
 
-func newOutboxEvent(
+func NewOutboxEvent(
 	eventType string,
 ) db.OutboxEvent {
 	id := uuid.New()

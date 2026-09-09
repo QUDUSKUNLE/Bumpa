@@ -71,7 +71,11 @@ func AchievementDefinition() []events.AchievementDefinition {
 	}
 }
 
-func NewAchievementService(repo ports.RepositoryPorts, defs []events.AchievementDefinition, bus events.EventPublisher) *AchievementService {
+func NewAchievementService(
+	repo ports.RepositoryPorts,
+	defs []events.AchievementDefinition,
+	bus events.EventPublisher,
+) *AchievementService {
 	return &AchievementService{
 		repo:                   repo,
 		achievementDefinitions: defs,
@@ -151,7 +155,7 @@ func (s *AchievementService) ProcessPurchase(
 	return nil
 }
 
-func (p *AchievementService) Process(ctx context.Context) error {
+func (p *AchievementService) ProcessAchievement(ctx context.Context) error {
 	events, err := p.repo.GetPendingOutboxEvents(ctx, 100)
 	if err != nil {
 		return err

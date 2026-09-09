@@ -15,7 +15,7 @@ type MockAchievementService struct {
 		purchase events.Purchase,
 	) error
 
-	ProcessFunc func(
+	ProcessAchievementFunc func(
 		ctx context.Context,
 	) error
 
@@ -46,11 +46,11 @@ func (m *MockAchievementService) ProcessPurchase(
 	return nil
 }
 
-func (m *MockAchievementService) Process(
+func (m *MockAchievementService) ProcessAchievement(
 	ctx context.Context,
 ) error {
-	if m.ProcessFunc != nil {
-		return m.ProcessFunc(ctx)
+	if m.ProcessAchievementFunc != nil {
+		return m.ProcessAchievementFunc(ctx)
 	}
 
 	return nil

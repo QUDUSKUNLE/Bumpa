@@ -49,7 +49,11 @@ func BadgeDefinition() []events.BadgeDefinition {
 	}
 }
 
-func NewBadgeService(repo ports.RepositoryPorts, defs []events.BadgeDefinition, bus events.EventPublisher) *BadgeService {
+func NewBadgeService(
+	repo ports.RepositoryPorts,
+	defs []events.BadgeDefinition,
+	bus events.EventPublisher,
+) *BadgeService {
 	return &BadgeService{
 		repo:             repo,
 		badgeDefinitions: defs,
@@ -82,7 +86,7 @@ func (s *BadgeService) HandleAchievementUnlocked(
 			pgtype.UUID{Bytes: event.AggregateID, Valid: true},
 		)
 		utils.LogInfo(
-			"Achievement count for user %s = %d",
+			"Achievement count for user %s=%d",
 			event.UserID,
 			stats.TotalPurchases,
 		)

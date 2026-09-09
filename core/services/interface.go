@@ -1,4 +1,4 @@
-package achievements
+package services
 
 import (
 	"context"
@@ -12,10 +12,10 @@ type Service interface {
 	ProcessPurchase(
 		ctx context.Context,
 		userID pgtype.UUID,
-		purchase events.Purchase,
+		event events.Purchase,
 	) error
 
-	Process(ctx context.Context) error
+	ProcessAchievement(ctx context.Context) error
 
 	GetUserAchievements(ctx echo.Context) error
 }
