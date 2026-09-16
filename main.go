@@ -32,7 +32,7 @@ import (
 func seedUser(ctx context.Context, repo *repositories.Repository) error {
 	user := db.CreateUserParams{
 		Name:  "Qudus Yekeen Adekunle335r",
-		Email: "qudus.adekunlee@example.com",
+		Email: "qudus.adekunleee@example.com",
 		Phone: pgtype.Text{String: "+23480000000001", Valid: true},
 		PaymentAccount: pgtype.Text{
 			String: "RCP_m7ljkv8leesep7pp",

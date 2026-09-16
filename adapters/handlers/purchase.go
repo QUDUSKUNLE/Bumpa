@@ -36,7 +36,7 @@ func (h *HttpHandler) CreatePurchase(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid UUID format")
 	}
 
-	evt := events.Purchase{
+	purchaseEvent := events.Purchase{
 		ID:             purchaseID,
 		User:           userID,
 		ExternalID:     req.ExternalID,
@@ -46,25 +46,25 @@ func (h *HttpHandler) CreatePurchase(c echo.Context) error {
 
 	utils.LogInfo(
 		"BEFORE ProcessPurchase ID=%s ExternalID=%s",
-		evt.ID,
-		evt.ExternalID,
+		purchaseEvent.ID,
+		purchaseEvent.ExternalID,
 	)
 
 	err = h.servicesAdapter.AchievementService.ProcessPurchase(
 		c.Request().Context(),
-		pgtype.UUID{Bytes: evt.User, Valid: true},
-		evt,
+		pgtype.UUID{Bytes: purchaseEvent.User, Valid: true},
+		purchaseEvent,
 	)
 
 	utils.LogInfo(
 		"AFTER ProcessPurchase ID=%s ExternalID=%s ERROR=%v",
-		evt.ID,
-		evt.ExternalID,
+		purchaseEvent.ID,
+		purchaseEvent.ExternalID,
 		err,
 	)
 
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]any{
+		return c.JSON(http.StatusConflict, map[string]any{
 			"status": false,
 			"error":  err.Error(),
 		})

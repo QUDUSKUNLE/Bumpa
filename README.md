@@ -223,7 +223,7 @@ Example:
 curl http://localhost:8081/health
 ```
 
-### `GET /users/:user/achievements`
+### `GET /users/:user_id/achievements`
 
 Returns the user's unlocked achievements and the next available achievement for each achievement group.
 
@@ -624,21 +624,3 @@ Health check:
 curl http://localhost:8081/health
 ```
 
-## Security
-
-Never commit secrets to source control.
-
-Do not commit:
-
-```text
-.env
-PAYSTACK_SECRET_KEY
-PAYSTACK_WEBHOOK_SECRET
-PROD_DATABASE_URL
-```
-
-Use environment variables or your deployment platform's secret manager for production credentials.
-
-## License
-
-Add the project's license information here.

@@ -129,8 +129,9 @@ func (s *AchievementService) ProcessPurchase(
 				return err
 			}
 
-			evt := domain.Event{
+			achievementPayload := domain.Event{
 				ID:             uuid.New(),
+				PurchaseID:     purchase.ID,
 				UserID:         uuid.UUID(userID.Bytes),
 				Type:           "AchievementUnlocked",
 				OccurredAt:     time.Now().UTC(),
@@ -139,7 +140,7 @@ func (s *AchievementService) ProcessPurchase(
 				PaymentAccount: purchase.PaymentAccount,
 			}
 
-			if err := tx.AddOutboxEvent(ctx, evt); err != nil {
+			if err := tx.AddOutboxEvent(ctx, achievementPayload); err != nil {
 				utils.LogError("AddOutboxEvent Service Error: %v", err)
 				return err
 			}
