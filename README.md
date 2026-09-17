@@ -223,7 +223,7 @@ Example:
 curl http://localhost:8081/health
 ```
 
-### `GET /users/:user/achievements`
+### `GET /users/:user_id/achievements`
 
 Returns the user's unlocked achievements and the next available achievement for each achievement group.
 
@@ -625,7 +625,3 @@ curl http://localhost:8081/health
 ```
 
 Use environment variables or your deployment platform's secret manager for production credentials.
-
-## License
-
-Add the project's license information here.

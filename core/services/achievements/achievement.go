@@ -71,7 +71,11 @@ func AchievementDefinition() []events.AchievementDefinition {
 	}
 }
 
-func NewAchievementService(repo ports.RepositoryPorts, defs []events.AchievementDefinition, bus events.EventPublisher) *AchievementService {
+func NewAchievementService(
+	repo ports.RepositoryPorts,
+	defs []events.AchievementDefinition,
+	bus events.EventPublisher,
+) *AchievementService {
 	return &AchievementService{
 		repo:                   repo,
 		achievementDefinitions: defs,
@@ -125,8 +129,9 @@ func (s *AchievementService) ProcessPurchase(
 				return err
 			}
 
-			evt := domain.Event{
+			achievementPayload := domain.Event{
 				ID:             uuid.New(),
+				PurchaseID:     purchase.ID,
 				UserID:         uuid.UUID(userID.Bytes),
 				Type:           "AchievementUnlocked",
 				OccurredAt:     time.Now().UTC(),
@@ -135,7 +140,7 @@ func (s *AchievementService) ProcessPurchase(
 				PaymentAccount: purchase.PaymentAccount,
 			}
 
-			if err := tx.AddOutboxEvent(ctx, evt); err != nil {
+			if err := tx.AddOutboxEvent(ctx, achievementPayload); err != nil {
 				utils.LogError("AddOutboxEvent Service Error: %v", err)
 				return err
 			}
@@ -151,7 +156,7 @@ func (s *AchievementService) ProcessPurchase(
 	return nil
 }
 
-func (p *AchievementService) Process(ctx context.Context) error {
+func (p *AchievementService) ProcessAchievement(ctx context.Context) error {
 	events, err := p.repo.GetPendingOutboxEvents(ctx, 100)
 	if err != nil {
 		return err

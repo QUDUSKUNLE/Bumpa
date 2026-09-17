@@ -10,6 +10,7 @@ type Handler func(context.Context, domain.Event) error
 
 type EventPublisher interface {
 	Publish(ctx context.Context, event domain.Event) error
+	Subscribe(eventType string, handler Handler)
 }
 
 type EventBus struct {

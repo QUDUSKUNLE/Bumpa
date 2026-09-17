@@ -23,7 +23,10 @@ type CashbackService struct {
 	amountKobo      int64
 }
 
-func NewCashbackService(repo ports.RepositoryPorts, provider payments.PaystackAdapter) *CashbackService {
+func NewCashbackService(
+	repo ports.RepositoryPorts,
+	provider payments.PaystackAdapter,
+) *CashbackService {
 	return &CashbackService{
 		repo:            repo,
 		paymentProvider: provider,
@@ -43,7 +46,6 @@ func (s *CashbackService) HandleBadgeUnlocked(
 	)
 
 	var payload events.BadgeUnlockedPayload
-
 	if err := json.Unmarshal(event.Payload, &payload); err != nil {
 		utils.LogError(
 			"Unmarshal BadgeUnlocked Payload Error: %v",

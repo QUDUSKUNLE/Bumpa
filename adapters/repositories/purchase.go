@@ -13,7 +13,7 @@ import (
 
 func (r *Repository) InsertPurchaseIfNew(ctx context.Context, req events.Purchase) (bool, error) {
 	utils.LogInfo(
-		"=== INSERT PURCHASE START ID=%v ===",
+		"INSERT PURCHASE START ID=%v",
 		req.ID,
 	)
 
@@ -24,13 +24,13 @@ func (r *Repository) InsertPurchaseIfNew(ctx context.Context, req events.Purchas
 		AmountKobo: int64(req.AmountKobo)})
 
 	utils.LogInfo(
-		"=== INSERT PURCHASE RESULT ID=%v ERR=%v ===",
+		"INSERT PURCHASE RESULT ID=%v ERROR=%v",
 		req.ID,
 		err,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		utils.LogInfo("Purchase already exists, skipping: %v", req.ID)
-		return false, nil
+		return false, errors.New("Purchase already exist")
 	}
 	if err != nil {
 		utils.LogError("CreatePurchase Repositories Error: %v", err)

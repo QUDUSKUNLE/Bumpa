@@ -18,7 +18,10 @@ type OutboxProcessor struct {
 	bus  events.EventPublisher
 }
 
-func NewOutboxProcessor(repo ports.RepositoryPorts, bus events.EventPublisher) *OutboxProcessor {
+func NewOutboxProcessor(
+	repo ports.RepositoryPorts,
+	bus events.EventPublisher,
+) *OutboxProcessor {
 	return &OutboxProcessor{
 		repo: repo,
 		bus:  bus,
@@ -38,8 +41,9 @@ func (p *OutboxProcessor) OutboxProcessor(ctx context.Context) error {
 	)
 
 	for _, event := range eventArray {
-		evt := events.Event{
+		evt := domain.Event{
 			ID:          uuid.UUID(event.ID.Bytes),
+			PurchaseID:  uuid.UUID(event.ID.Bytes),
 			UserID:      uuid.UUID(event.AggregateID.Bytes),
 			Type:        event.EventType,
 			AggregateID: uuid.UUID(event.AggregateID.Bytes),
@@ -62,30 +66,50 @@ func (p *OutboxProcessor) OutboxProcessor(ctx context.Context) error {
 	return nil
 }
 
+func (p *OutboxProcessor) Run(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	utils.LogInfo("Outbox processor started")
+
+	// Process immediately on startup.
+	p.runOnce(ctx)
+
+	for {
+		select {
+		case <- ctx.Done():
+			utils.LogInfo("Outbox processor stopped")
+			return
+
+		case <- ticker.C:
+			p.runOnce(ctx)
+		}
+	}
+}
+
+func (p *OutboxProcessor) runOnce(ctx context.Context) {
+	if err := p.OutboxProcessor(ctx); err != nil {
+		utils.LogError(
+			"Outbox processor error: %v",
+			err,
+		)
+	}
+}
+
 func (p *OutboxProcessor) processEvent(
 	ctx context.Context,
-	event events.Event,
+	event domain.Event,
 ) error {
-
-	evt := domain.Event{
-		ID:             event.ID,
-		UserID:         event.AggregateID,
-		Type:           event.Type,
-		AggregateID:    event.AggregateID,
-		OccurredAt:     event.OccurredAt,
-		Payload:        event.Payload,
-		PaymentAccount: event.PaymentAccount,
-	}
 
 	utils.LogInfo(
 		"Publishing outbox event ID=%s Type=%s AggregateID=%s",
-		evt.ID,
-		evt.Type,
-		evt.AggregateID,
+		event.ID,
+		event.Type,
+		event.AggregateID,
 	)
 
 	// Publish FIRST.
-	if err := p.bus.Publish(ctx, evt); err != nil {
+	if err := p.bus.Publish(ctx, event); err != nil {
 		utils.LogError(
 			"Failed publishing outbox event %s: %v",
 			event.ID,
@@ -114,39 +138,9 @@ func (p *OutboxProcessor) processEvent(
 
 	utils.LogInfo(
 		"Successfully processed outbox event ID=%s Type=%s",
-		evt.ID,
-		evt.Type,
+		event.ID,
+		event.Type,
 	)
 
 	return nil
-}
-
-func (p *OutboxProcessor) Run(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	utils.LogInfo("Outbox processor started")
-
-	// Process immediately on startup.
-	p.runOnce(ctx)
-
-	for {
-		select {
-		case <-ctx.Done():
-			utils.LogInfo("Outbox processor stopped")
-			return
-
-		case <-ticker.C:
-			p.runOnce(ctx)
-		}
-	}
-}
-
-func (p *OutboxProcessor) runOnce(ctx context.Context) {
-	if err := p.OutboxProcessor(ctx); err != nil {
-		utils.LogError(
-			"Outbox processor error: %v",
-			err,
-		)
-	}
 }
