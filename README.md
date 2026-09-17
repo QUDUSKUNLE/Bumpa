@@ -624,3 +624,4 @@ Health check:
 curl http://localhost:8081/health
 ```
 
+Use environment variables or your deployment platform's secret manager for production credentials.
