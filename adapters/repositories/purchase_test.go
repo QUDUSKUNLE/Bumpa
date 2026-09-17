@@ -42,8 +42,7 @@ func TestRepository_InsertPurchaseIfNew(t *testing.T) {
 	// Same purchase ID should not be inserted again.
 	inserted, err = repo.InsertPurchaseIfNew(ctx, purchase)
 
-	require.NoError(t, err)
-	require.NotNil(t, inserted)
+	assert.Error(t, err)
 	assert.False(t, inserted)
 }
 
@@ -97,8 +96,4 @@ func TestRepository_GetPurchaseStats(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 2, stats.TotalPurchases)
-}
-
-func int64Ptr(value int64) *int64 {
-	return &value
 }
